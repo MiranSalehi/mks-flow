@@ -1,0 +1,51 @@
+:root {
+  --mks-radius-sm: 6px;
+  --mks-radius-md: 10px;
+  --mks-radius-lg: 14px;
+  --mks-radius-xl: 18px;
+  --mks-radius-pill: 999px;
+
+  --mks-space-1: 4px;
+  --mks-space-2: 8px;
+  --mks-space-3: 12px;
+  --mks-space-4: 16px;
+  --mks-space-5: 24px;
+  --mks-space-6: 32px;
+
+  --mks-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mks-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --mks-duration-fast: 120ms;
+  --mks-duration: 200ms;
+  --mks-duration-slow: 320ms;
+
+  --mks-shadow-1: 0 1px 2px
+    color-mix(in srgb, var(--vscode-widget-shadow, #000) 14%, transparent);
+  --mks-shadow-2: 0 6px 20px
+    color-mix(in srgb, var(--vscode-widget-shadow, #000) 20%, transparent);
+  --mks-shadow-3: 0 12px 32px
+    color-mix(in srgb, var(--vscode-widget-shadow, #000) 26%, transparent);
+  --mks-shadow-inset: inset 0 1px 0
+    color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+
+  --mks-surface-1: var(--vscode-editor-background);
+  --mks-surface-2: color-mix(
+    in srgb,
+    var(--vscode-sideBar-background) 72%,
+    var(--vscode-editor-background)
+  );
+  --mks-surface-glass: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 82%,
+    transparent
+  );
+
+  --mks-accent-todo: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+  --mks-accent-doing: var(--vscode-charts-orange, var(--vscode-editorWarning-foreground));
+  --mks-accent-test: var(--vscode-charts-purple, var(--vscode-badge-background));
+  --mks-accent-done: var(--vscode-charts-green, var(--vscode-testing-iconPassed));
+
+  --mks-glow-todo: color-mix(in srgb, var(--mks-accent-todo) 28%, transparent);
+  --mks-glow-doing: color-mix(in srgb, var(--mks-accent-doing) 28%, transparent);
+  --mks-glow-test: color-mix(in srgb, var(--mks-accent-test) 28%, transparent);
+  --mks-glow-done: color-mix(in srgb, var(--mks-accent-done) 28%, transparent);
+}

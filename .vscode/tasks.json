@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-extension",
+      "type": "npm",
+      "script": "compile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "ensure-electron-sqlite",
+      "type": "npm",
+      "script": "ensure:electron",
+      "problemMatcher": []
+    },
+    {
+      "label": "build-all",
+      "dependsOn": ["ensure-electron-sqlite", "build-extension", "build-webview"],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build-webview",
+      "type": "npm",
+      "script": "build:webview",
+      "problemMatcher": []
+    },
+    {
+      "label": "watch-extension",
+      "type": "npm",
+      "script": "watch",
+      "isBackground": true,
+      "problemMatcher": ["$tsc-watch"]
+    }
+  ]
+}
