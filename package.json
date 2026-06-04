@@ -1,0 +1,232 @@
+{
+  "name": "mksflow",
+  "displayName": "MKSFlow",
+  "description": "AI-native task management for developers using Cursor",
+  "version": "0.1.0",
+  "publisher": "mksflow",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20 <25",
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:extension && npm run build:webview",
+    "build:extension": "webpack --mode production",
+    "build:webview": "npm run build --prefix webview-ui",
+    "watch": "webpack --mode development --watch",
+    "compile": "webpack --mode development",
+    "rebuild:electron": "node scripts/rebuild-sqlite.js --force",
+    "ensure:electron": "node scripts/rebuild-sqlite.js",
+    "postinstall": "node scripts/rebuild-sqlite.js --force"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mksflow",
+          "title": "MKSFlow",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mksflow": [
+        {
+          "id": "mksflow.taskTree",
+          "name": "Tasks",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mksflow.quickCapture",
+        "title": "MKSFlow: Quick Capture"
+      },
+      {
+        "command": "mksflow.createProject",
+        "title": "MKSFlow: Create Project"
+      },
+      {
+        "command": "mksflow.deleteProject",
+        "title": "MKSFlow: Delete Project"
+      },
+      {
+        "command": "mksflow.createTask",
+        "title": "MKSFlow: Create Task"
+      },
+      {
+        "command": "mksflow.startTask",
+        "title": "MKSFlow: Start Task"
+      },
+      {
+        "command": "mksflow.readyForTest",
+        "title": "MKSFlow: Ready For Test"
+      },
+      {
+        "command": "mksflow.approveTask",
+        "title": "MKSFlow: Approve Task"
+      },
+      {
+        "command": "mksflow.sendToAI",
+        "title": "MKSFlow: Send To AI"
+      },
+      {
+        "command": "mksflow.openBoard",
+        "title": "MKSFlow: Open Board"
+      },
+      {
+        "command": "mksflow.exportProject",
+        "title": "MKSFlow: Export Project"
+      },
+      {
+        "command": "mksflow.searchTasks",
+        "title": "MKSFlow: Search Tasks"
+      },
+      {
+        "command": "mksflow.editTask",
+        "title": "MKSFlow: Edit Task"
+      },
+      {
+        "command": "mksflow.deleteTask",
+        "title": "MKSFlow: Delete Task"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "mksflow.createProject",
+          "when": "view == mksflow.taskTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mksflow.quickCapture",
+          "when": "view == mksflow.taskTree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "mksflow.openBoard",
+          "when": "view == mksflow.taskTree",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "mksflow.createTask",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.project",
+          "group": "inline@1"
+        },
+        {
+          "command": "mksflow.exportProject",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.project",
+          "group": "project@1"
+        },
+        {
+          "command": "mksflow.deleteProject",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.project",
+          "group": "project@2"
+        },
+        {
+          "command": "mksflow.startTask",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.task.todo",
+          "group": "task@1"
+        },
+        {
+          "command": "mksflow.readyForTest",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.task.doing",
+          "group": "task@1"
+        },
+        {
+          "command": "mksflow.approveTask",
+          "when": "view == mksflow.taskTree && viewItem == mksflow.task.test",
+          "group": "task@1"
+        },
+        {
+          "command": "mksflow.sendToAI",
+          "when": "view == mksflow.taskTree && viewItem =~ /^mksflow.task\\./",
+          "group": "task@2"
+        },
+        {
+          "command": "mksflow.editTask",
+          "when": "view == mksflow.taskTree && viewItem =~ /^mksflow.task\\./",
+          "group": "task@3"
+        },
+        {
+          "command": "mksflow.deleteTask",
+          "when": "view == mksflow.taskTree && viewItem =~ /^mksflow.task\\./",
+          "group": "task@4"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mksflow.quickCapture",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t"
+      }
+    ],
+    "configuration": {
+      "title": "MKSFlow",
+      "properties": {
+        "mksflow.databasePath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom database path. Leave empty to use default."
+        },
+        "mksflow.defaultPriority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "default": "medium"
+        },
+        "mksflow.gitIntegration": {
+          "type": "boolean",
+          "default": true
+        },
+        "mksflow.aiProvider": {
+          "type": "string",
+          "enum": ["cursor", "clipboard"],
+          "default": "cursor",
+          "description": "How Send to AI delivers context: cursor writes .mksflow/tasks/*.md and opens Composer; clipboard copies prompt text only."
+        },
+        "mksflow.showTimerInStatusBar": {
+          "type": "boolean",
+          "default": true
+        },
+        "mksflow.quickCaptureDefaultProject": {
+          "type": "string",
+          "default": "",
+          "description": "Default project ID for Quick Capture"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "@types/vscode": "^1.85.0",
+    "copy-webpack-plugin": "^12.0.2",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
