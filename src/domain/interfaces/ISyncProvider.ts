@@ -8,6 +8,8 @@ export interface ExternalTask {
   status: string;
   priority: string;
   url: string;
+  tags?: string[];
+  updatedAt?: string;
 }
 
 /**

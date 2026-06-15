@@ -18,6 +18,9 @@ export interface AIResponse {
   contextFilePath?: string;
   relativePath?: string;
   chatPrompt?: string;
+  providerId?: string;
+  providerName?: string;
+  attachedToChat?: boolean;
 }
 
 /** Pluggable AI backend (clipboard, Cursor, Claude, MCP, …). */

@@ -8,7 +8,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   if (collapsed) {
     return (
-      <div style={{ padding: 8 }}>
+      <div className="sidebar-rail__toggle">
         <Button variant="ghost" onClick={onToggle} title="Expand sidebar">
           ☰
         </Button>

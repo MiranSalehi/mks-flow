@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { TaskPriority } from '../../types/messages';
 import { PRIORITY_LABELS } from '../../types/messages';
+import { Button } from '../shared/Button';
 
 interface SearchFilterProps {
   query: string;
@@ -8,8 +9,8 @@ interface SearchFilterProps {
   availableTags: string[];
   activeTags: string[];
   onQueryChange: (query: string) => void;
-  onTogglePriority: (priority: TaskPriority) => void;
-  onToggleTag: (tag: string) => void;
+  onSetPriority: (priority: TaskPriority | null) => void;
+  onSetTag: (tag: string | null) => void;
   onClear: () => void;
 }
 
@@ -23,49 +24,69 @@ export const SearchFilter = forwardRef<HTMLInputElement, SearchFilterProps>(
       availableTags,
       activeTags,
       onQueryChange,
-      onTogglePriority,
-      onToggleTag,
+      onSetPriority,
+      onSetTag,
       onClear,
     },
     ref,
   ) {
-  return (
-    <div className="search-filter">
-      <input
-        ref={ref}
-        className="input search-filter__input"
-        placeholder="Search tasks... (press /)"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-      />
-      {PRIORITIES.map((priority) => (
-        <button
-          key={priority}
-          type="button"
-          className={`chip chip--clickable ${
-            activePriorities.includes(priority) ? 'chip--active' : ''
-          }`}
-          onClick={() => onTogglePriority(priority)}
+    const activePriority = activePriorities[0];
+    const activeTag = activeTags[0];
+    const hasFilters =
+      query.trim().length > 0 || activePriority !== undefined || activeTag !== undefined;
+
+    return (
+      <div className="search-filter">
+        <input
+          ref={ref}
+          className="input search-filter__input"
+          placeholder="Search tasks... (press /)"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
+        <select
+          className="search-filter__select"
+          value={activePriority ?? ''}
+          onChange={(event) =>
+            onSetPriority(
+              event.target.value ? (event.target.value as TaskPriority) : null,
+            )
+          }
+          aria-label="Filter by priority"
         >
-          {PRIORITY_LABELS[priority]}
-        </button>
-      ))}
-      {availableTags.map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          className={`chip chip--clickable ${
-            activeTags.includes(tag) ? 'chip--active' : ''
-          }`}
-          onClick={() => onToggleTag(tag)}
+          <option value="">All priorities</option>
+          {PRIORITIES.map((priority) => (
+            <option key={priority} value={priority}>
+              {PRIORITY_LABELS[priority]}
+            </option>
+          ))}
+        </select>
+
+        {availableTags.length > 0 ? (
+          <select
+            className="search-filter__select search-filter__select--tag"
+            value={activeTag ?? ''}
+            onChange={(event) => onSetTag(event.target.value || null)}
+            aria-label="Filter by tag"
+          >
+            <option value="">All tags</option>
+            {availableTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        ) : null}
+
+        <Button
+          variant="ghost"
+          className="search-filter__clear"
+          onClick={onClear}
+          disabled={!hasFilters}
         >
-          {tag}
-        </button>
-      ))}
-      <button type="button" className="button button--secondary" onClick={onClear}>
-        Clear
-      </button>
-    </div>
-  );
+          Clear
+        </Button>
+      </div>
+    );
   },
 );

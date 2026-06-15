@@ -2,8 +2,14 @@ import * as vscode from 'vscode';
 import { getContainer } from '../../application/containerHolder';
 import type { TaskStatus } from '../../domain/types';
 import { TASK_TREE_VIEW_ID } from '../../shared/constants';
+import { summarizeTaskAttention } from '../../application/services/TaskAttentionService';
+import {
+  BoardLauncherStatusBar,
+  refreshBoardLauncher,
+} from '../statusbar/BoardLauncherStatusBar';
 import {
   MessageTreeItem,
+  OpenBoardTreeItem,
   ProjectTreeItem,
   StatusGroupTreeItem,
   TaskTreeItem,
@@ -43,7 +49,11 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TreeNode> {
           ];
         }
 
-        return projects.map((project) => new ProjectTreeItem(project));
+        const attention = summarizeTaskAttention(container.taskService.findAll());
+        return [
+          new OpenBoardTreeItem(attention.badgeCount),
+          ...projects.map((project) => new ProjectTreeItem(project)),
+        ];
       }
 
       if (element instanceof ProjectTreeItem) {
@@ -108,12 +118,33 @@ export function registerTaskTreeView(
     treeDataProvider: provider,
     showCollapseAll: true,
   });
+
+  const applyBadge = (summary: ReturnType<typeof summarizeTaskAttention>): void => {
+    if (summary.badgeCount > 0) {
+      treeView.badge = {
+        value: summary.badgeCount,
+        tooltip: summary.badgeTooltip,
+      };
+    } else {
+      treeView.badge = undefined;
+    }
+  };
+
+  BoardLauncherStatusBar.setTreeBadgeUpdater(applyBadge);
+
+  treeView.onDidChangeVisibility((event) => {
+    if (event.visible) {
+      refreshBoardLauncher();
+    }
+  });
+
   context.subscriptions.push(treeView);
   return provider;
 }
 
 export {
   MessageTreeItem,
+  OpenBoardTreeItem,
   ProjectTreeItem,
   StatusGroupTreeItem,
   TaskTreeItem,

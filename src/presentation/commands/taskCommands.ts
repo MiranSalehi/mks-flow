@@ -106,9 +106,13 @@ async function sendToAI(
   }
 
   if (response.relativePath) {
+    const hostLabel = response.providerName ?? 'AI chat';
+    const attachHint = response.attachedToChat
+      ? `attached in ${hostLabel}`
+      : `ready for ${hostLabel}`;
     void vscode.window
       .showInformationMessage(
-        `Task context ready: @${response.relativePath}`,
+        `Task context ${attachHint}: @${response.relativePath}`,
         'Open Board',
         'Open File',
       )

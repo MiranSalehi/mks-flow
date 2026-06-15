@@ -17,6 +17,7 @@ interface TaskCardProps {
   onRevertToDoing: () => void;
   onSendToAi: () => void;
   onDelete: () => void;
+  allowDelete?: boolean;
 }
 
 export function TaskCard({
@@ -30,6 +31,7 @@ export function TaskCard({
   onRevertToDoing,
   onSendToAi,
   onDelete,
+  allowDelete = true,
 }: TaskCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -54,8 +56,8 @@ export function TaskCard({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
+    transition: isDragging ? undefined : transition,
+    zIndex: isDragging ? 0 : undefined,
   };
 
   const primaryAction = getPrimaryAction(task.status, {
@@ -69,13 +71,13 @@ export function TaskCard({
     <article
       ref={setNodeRef}
       style={style}
-      className={`task-card task-card--${task.status} ${
-        isDragging ? 'task-card--dragging' : ''
-      }`}
+      className={`task-card ${isDragging ? 'task-card--dragging' : ''}`}
       {...attributes}
       {...listeners}
     >
       <span className="task-card__accent" aria-hidden />
+      {isDragging ? <div className="task-card__placeholder" aria-hidden /> : null}
+      <div className={`task-card__body ${isDragging ? 'task-card__body--hidden' : ''}`}>
       <div className="task-card__top">
         <h4 className="task-card__title" onDoubleClick={onOpen}>
           {task.title}
@@ -104,9 +106,11 @@ export function TaskCard({
               <button type="button" onClick={onSendToAi}>
                 Send to AI
               </button>
-              <button type="button" className="task-card__menu-danger" onClick={onDelete}>
-                Delete
-              </button>
+              {allowDelete ? (
+                <button type="button" className="task-card__menu-danger" onClick={onDelete}>
+                  Delete
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -122,12 +126,36 @@ export function TaskCard({
         {task.status === 'doing' && elapsed !== undefined ? (
           <span className="chip chip--timer">▶ {formatElapsed(elapsed)}</span>
         ) : null}
+        {task.externalProvider === 'github' ? (
+          <span className="chip chip--github" title="Synced with GitHub">
+            {task.externalId?.startsWith('pr-')
+              ? 'PR'
+              : `#${task.externalId}`}
+          </span>
+        ) : null}
+        {task.externalProvider === 'linear' ? (
+          <span className="chip chip--linear" title="Synced with Linear">
+            Linear
+          </span>
+        ) : null}
+        {task.externalProvider === 'notion' ? (
+          <span className="chip chip--notion" title="Synced with Notion">
+            N
+          </span>
+        ) : null}
         {task.externalUrl ? (
           <a
             className="link-button"
             href={task.externalUrl}
             target="_blank"
             rel="noreferrer"
+            title={
+              task.externalProvider === 'notion'
+                ? 'Open in Notion'
+                : task.externalProvider === 'github'
+                  ? 'Open in GitHub'
+                  : 'Open in Linear'
+            }
             onPointerDown={(event) => event.stopPropagation()}
           >
             ↗
@@ -164,7 +192,7 @@ export function TaskCard({
         ) : null}
         <button
           type="button"
-          className={`task-card__primary task-card__primary--${task.status}`}
+          className="task-card__primary"
           onClick={(event) => {
             event.stopPropagation();
             primaryAction.onClick();
@@ -176,6 +204,7 @@ export function TaskCard({
             →
           </span>
         </button>
+      </div>
       </div>
     </article>
   );

@@ -21,6 +21,8 @@ export interface Task {
   externalId: string | null;
   externalProvider: string | null;
   externalUrl: string | null;
+  /** Display order within the task's status column (0 = top). */
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }

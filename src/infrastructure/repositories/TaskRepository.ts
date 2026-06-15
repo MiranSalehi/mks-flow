@@ -37,9 +37,23 @@ const TASK_SELECT = `
     external_provider,
     external_url,
     description_images,
+    sort_order,
     created_at,
     updated_at
   FROM tasks
+`;
+
+const TASK_ORDER_BY = `
+  ORDER BY
+    CASE status
+      WHEN 'todo' THEN 0
+      WHEN 'doing' THEN 1
+      WHEN 'test' THEN 2
+      WHEN 'done' THEN 3
+      ELSE 4
+    END,
+    sort_order ASC,
+    updated_at DESC
 `;
 
 /**
@@ -52,7 +66,7 @@ export class TaskRepository implements ITaskRepository {
   findAll(): Task[] {
     try {
       const rows = this.db
-        .prepare(`${TASK_SELECT} ORDER BY updated_at DESC`)
+        .prepare(`${TASK_SELECT}${TASK_ORDER_BY}`)
         .all() as TaskRow[];
 
       return rows.map(mapTaskRow);
@@ -68,7 +82,7 @@ export class TaskRepository implements ITaskRepository {
         .prepare(
           `${TASK_SELECT}
            WHERE project_id = ?
-           ORDER BY updated_at DESC`,
+           ${TASK_ORDER_BY}`,
         )
         .all(projectId) as TaskRow[];
 
@@ -88,7 +102,7 @@ export class TaskRepository implements ITaskRepository {
         .prepare(
           `${TASK_SELECT}
            WHERE project_id = ? AND status = ?
-           ORDER BY updated_at DESC`,
+           ORDER BY sort_order ASC, updated_at DESC`,
         )
         .all(projectId, status) as TaskRow[];
 
@@ -143,7 +157,7 @@ export class TaskRepository implements ITaskRepository {
         .prepare(
           `${TASK_SELECT}
            WHERE ${conditions.join(' AND ')}
-           ORDER BY updated_at DESC`,
+           ${TASK_ORDER_BY}`,
         )
         .all(...params) as TaskRow[];
 
@@ -176,12 +190,14 @@ export class TaskRepository implements ITaskRepository {
     }
 
     const now = new Date();
+    const status = data.status ?? 'todo';
+    const sortOrder = this.nextSortOrder(data.projectId, status);
     const task: Task = {
       id: uuidv4(),
       projectId: data.projectId,
       title,
       description: data.description?.trim() ?? '',
-      status: data.status ?? 'todo',
+      status,
       priority: data.priority ?? 'medium',
       tags: data.tags ?? [],
       relatedFiles: data.relatedFiles ?? [],
@@ -192,6 +208,7 @@ export class TaskRepository implements ITaskRepository {
       externalProvider: data.externalProvider ?? null,
       externalUrl: data.externalUrl ?? null,
       descriptionImages: data.descriptionImages ?? [],
+      sortOrder,
       createdAt: now,
       updatedAt: now,
     };
@@ -215,9 +232,10 @@ export class TaskRepository implements ITaskRepository {
             external_provider,
             external_url,
             description_images,
+            sort_order,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           task.id,
@@ -235,6 +253,7 @@ export class TaskRepository implements ITaskRepository {
           task.externalProvider,
           task.externalUrl,
           serializeDescriptionImages(task.descriptionImages),
+          task.sortOrder,
           toIsoString(task.createdAt),
           toIsoString(task.updatedAt),
         );
@@ -252,13 +271,15 @@ export class TaskRepository implements ITaskRepository {
       throw new RepositoryError(`Task not found: ${id}`, 'NOT_FOUND');
     }
 
+    if (data.title !== undefined && !data.title.trim()) {
+      throw new RepositoryError('Task title cannot be empty', 'VALIDATION');
+    }
+
     const updated: Task = {
       ...existing,
-      title: data.title !== undefined ? data.title.trim() : existing.title,
+      title: data.title !== undefined ? data.title : existing.title,
       description:
-        data.description !== undefined
-          ? data.description.trim()
-          : existing.description,
+        data.description !== undefined ? data.description : existing.description,
       status: data.status ?? existing.status,
       priority: data.priority ?? existing.priority,
       tags: data.tags ?? existing.tags,
@@ -285,7 +306,7 @@ export class TaskRepository implements ITaskRepository {
       updatedAt: new Date(),
     };
 
-    if (!updated.title) {
+    if (!updated.title.trim()) {
       throw new RepositoryError('Task title cannot be empty', 'VALIDATION');
     }
 
@@ -337,7 +358,18 @@ export class TaskRepository implements ITaskRepository {
 
   /** @inheritdoc */
   updateStatus(id: string, status: TaskStatus): Task {
-    return this.update(id, { status });
+    const existing = this.findById(id);
+    if (!existing) {
+      throw new RepositoryError(`Task not found: ${id}`, 'NOT_FOUND');
+    }
+
+    const updated = this.update(id, { status });
+    if (existing.status !== status) {
+      this.placeTaskInColumn(existing.projectId, status, id);
+      return this.findById(id) ?? updated;
+    }
+
+    return updated;
   }
 
   /** @inheritdoc */
@@ -426,6 +458,49 @@ export class TaskRepository implements ITaskRepository {
   }
 
   /** @inheritdoc */
+  reorderTasks(
+    projectId: string,
+    status: TaskStatus,
+    taskIds: string[],
+  ): void {
+    const columnTasks = this.findByStatus(projectId, status);
+
+    if (taskIds.length !== columnTasks.length) {
+      throw new RepositoryError(
+        'Reorder list must include every task in the column',
+        'VALIDATION',
+      );
+    }
+
+    const expectedIds = new Set(columnTasks.map((task) => task.id));
+    for (const taskId of taskIds) {
+      if (!expectedIds.has(taskId)) {
+        throw new RepositoryError(
+          `Task ${taskId} is not in column "${status}"`,
+          'VALIDATION',
+        );
+      }
+    }
+
+    try {
+      const update = this.db.prepare(
+        `UPDATE tasks SET sort_order = ? WHERE id = ?`,
+      );
+      const apply = this.db.transaction(() => {
+        taskIds.forEach((taskId, index) => {
+          update.run(index, taskId);
+        });
+      });
+      apply();
+    } catch (error) {
+      throw wrapRepositoryError(
+        `Failed to reorder ${status} tasks for project ${projectId}`,
+        error,
+      );
+    }
+  }
+
+  /** @inheritdoc */
   getTaskLogs(taskId: string): TaskLog[] {
     try {
       const rows = this.db
@@ -444,5 +519,35 @@ export class TaskRepository implements ITaskRepository {
         error,
       );
     }
+  }
+
+  private nextSortOrder(projectId: string, status: TaskStatus): number {
+    const row = this.db
+      .prepare(
+        `SELECT COALESCE(MAX(sort_order), -1) AS max_order
+         FROM tasks
+         WHERE project_id = ? AND status = ?`,
+      )
+      .get(projectId, status) as { max_order: number };
+
+    return row.max_order + 1;
+  }
+
+  private placeTaskInColumn(
+    projectId: string,
+    status: TaskStatus,
+    taskId: string,
+    insertAt?: number,
+  ): void {
+    const columnTasks = this.findByStatus(projectId, status);
+    const orderedIds = columnTasks
+      .map((task) => task.id)
+      .filter((id) => id !== taskId);
+    const index =
+      insertAt === undefined
+        ? orderedIds.length
+        : Math.max(0, Math.min(insertAt, orderedIds.length));
+    orderedIds.splice(index, 0, taskId);
+    this.reorderTasks(projectId, status, orderedIds);
   }
 }

@@ -36,6 +36,7 @@ export interface TaskRow {
   external_provider: string | null;
   external_url: string | null;
   description_images: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -161,6 +162,7 @@ export function mapTaskRow(row: TaskRow): Task {
     externalId: row.external_id,
     externalProvider: row.external_provider,
     externalUrl: row.external_url,
+    sortOrder: row.sort_order ?? 0,
     createdAt: parseDate(row.created_at),
     updatedAt: parseDate(row.updated_at),
   };

@@ -4,7 +4,8 @@ import type { IAIProvider } from '../domain/interfaces/IAIProvider';
 import type { IProjectRepository } from '../domain/interfaces/IProjectRepository';
 import type { ITaskRepository } from '../domain/interfaces/ITaskRepository';
 import { ClipboardAIAdapter } from '../infrastructure/ai/adapters/ClipboardAIAdapter';
-import { CursorComposerAdapter } from '../infrastructure/ai/adapters/CursorComposerAdapter';
+import { SmartChatAdapter } from '../infrastructure/ai/adapters/SmartChatAdapter';
+import { ChatIntegrationService } from '../infrastructure/ai/chatHosts/ChatIntegrationService';
 import { CursorComposerService } from '../infrastructure/ai/CursorComposerService';
 import { ProjectRepository } from '../infrastructure/repositories/ProjectRepository';
 import { TaskRepository } from '../infrastructure/repositories/TaskRepository';
@@ -69,9 +70,10 @@ export class Container {
     const aiPromptService = new AIPromptService();
     const taskContextFileService = new TaskContextFileService(aiPromptService);
     const cursorComposerService = new CursorComposerService();
+    const chatIntegration = new ChatIntegrationService(cursorComposerService);
     const aiProvider = Container.resolveAiProvider(
       taskContextFileService,
-      cursorComposerService,
+      chatIntegration,
     );
 
     return new Container(
@@ -90,19 +92,16 @@ export class Container {
 
   private static resolveAiProvider(
     taskContextFileService: TaskContextFileService,
-    cursorComposerService: CursorComposerService,
+    chatIntegration: ChatIntegrationService,
   ): IAIProvider {
     const providerId = vscode.workspace
       .getConfiguration('mksflow')
-      .get<string>('aiProvider', 'cursor');
+      .get<string>('aiProvider', 'auto');
 
     if (providerId === 'clipboard') {
       return new ClipboardAIAdapter();
     }
 
-    return new CursorComposerAdapter(
-      taskContextFileService,
-      cursorComposerService,
-    );
+    return new SmartChatAdapter(taskContextFileService, chatIntegration);
   }
 }

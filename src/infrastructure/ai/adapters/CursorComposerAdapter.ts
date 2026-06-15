@@ -25,7 +25,7 @@ export class CursorComposerAdapter implements IAIProvider {
   }
 
   /**
-   * Writes `.mksflow/tasks/{id}.md` and opens Composer with an @file prompt.
+   * Writes `mksflow-tasks/{id}.md` and attaches it to Composer as a native file chip.
    */
   async sendPrompt(_prompt: string, context: TaskContext): Promise<AIResponse> {
     try {
@@ -38,11 +38,16 @@ export class CursorComposerAdapter implements IAIProvider {
         file.absolutePath,
       );
 
+      const message =
+        composer.insertMode === 'new_chat'
+          ? 'Task context opened in a new Composer chat'
+          : composer.openedComposer
+            ? 'Task context added to Composer chat'
+            : 'Task context file created (Composer unavailable)';
+
       return {
         success: true,
-        message: composer.openedComposer
-          ? 'Task context added to current Composer chat'
-          : 'Task context file created (Composer unavailable)',
+        message,
         contextFilePath: file.absolutePath,
         relativePath: file.relativePath,
         chatPrompt: composer.chatPrompt,

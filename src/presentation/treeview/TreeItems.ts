@@ -26,9 +26,30 @@ export const PRIORITY_ICONS: Record<TaskPriority, string> = {
 
 export type TreeNode =
   | MessageTreeItem
+  | OpenBoardTreeItem
   | ProjectTreeItem
   | StatusGroupTreeItem
   | TaskTreeItem;
+
+/** Pinned row at the top of the sidebar tree to open the Kanban board. */
+export class OpenBoardTreeItem extends vscode.TreeItem {
+  constructor(attentionCount: number) {
+    const label =
+      attentionCount > 0
+        ? `Open Kanban Board (${attentionCount})`
+        : 'Open Kanban Board';
+    super(label, vscode.TreeItemCollapsibleState.None);
+
+    this.contextValue = 'mksflow.openBoard';
+    this.iconPath = new vscode.ThemeIcon('layout');
+    this.description = 'Board';
+    this.tooltip = 'Open the MKSFlow Kanban board';
+    this.command = {
+      command: 'mksflow.openBoard',
+      title: 'Open Board',
+    };
+  }
+}
 
 /** Placeholder row when there is nothing to show. */
 export class MessageTreeItem extends vscode.TreeItem {

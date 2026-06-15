@@ -1,28 +1,124 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { TaskDescriptionImage } from '../../types/messages';
 import { useVSCode } from '../../hooks/useVSCode';
 import {
   blobToBase64,
   readClipboardImages,
 } from '../../utils/clipboardImages';
-import { Button } from '../shared/Button';
+import {
+  TaskDescriptionEditor,
+  type TaskDescriptionEditorHandle,
+} from './TaskDescriptionEditor';
+import { MediaPreviewLightbox } from './MediaPreviewLightbox';
+
+export interface TaskDescriptionFieldHandle {
+  getDescription: () => string;
+}
 
 interface TaskDescriptionFieldProps {
   taskId: string;
   description: string;
   images: TaskDescriptionImage[];
+  mediaUploadEnabled?: boolean;
+  mediaRemoveEnabled?: boolean;
   onDescriptionChange: (value: string) => void;
 }
 
-export function TaskDescriptionField({
-  taskId,
-  description,
-  images,
-  onDescriptionChange,
-}: TaskDescriptionFieldProps) {
+export const TaskDescriptionField = forwardRef<
+  TaskDescriptionFieldHandle,
+  TaskDescriptionFieldProps
+>(function TaskDescriptionField(
+  {
+    taskId,
+    description,
+    images,
+    mediaUploadEnabled = true,
+    mediaRemoveEnabled = true,
+    onDescriptionChange,
+  },
+  ref,
+) {
   const { postMessage } = useVSCode();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<TaskDescriptionEditorHandle>(null);
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [resolvedUris, setResolvedUris] = useState<Record<string, string>>({});
+  const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    getDescription: () => editorRef.current?.getValue() ?? description,
+  }));
+
+  const galleryImages = useMemo(
+    () =>
+      images.map((image) => ({
+        ...image,
+        uri: image.uri || resolvedUris[image.id] || '',
+      })),
+    [images, resolvedUris],
+  );
+
+  useEffect(() => {
+    setResolvedUris({});
+    setFailedIds({});
+    setPreviewId(null);
+  }, [taskId]);
+
+  useEffect(() => {
+    for (const image of images) {
+      if (image.uri || resolvedUris[image.id] || failedIds[image.id]) {
+        continue;
+      }
+
+      postMessage({
+        type: 'RESOLVE_CLOUD_ATTACHMENT',
+        taskId,
+        attachmentId: image.id,
+        mimeType: image.mimeType,
+      });
+    }
+  }, [failedIds, images, postMessage, resolvedUris, taskId]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const message = event.data as {
+        type?: string;
+        taskId?: string;
+        attachmentId?: string;
+        uri?: string;
+      };
+
+      if (message.taskId !== taskId || !message.attachmentId) {
+        return;
+      }
+
+      if (message.type === 'CLOUD_ATTACHMENT_URI' && message.uri) {
+        setResolvedUris((current) => ({
+          ...current,
+          [message.attachmentId!]: message.uri!,
+        }));
+        return;
+      }
+
+      if (message.type === 'CLOUD_ATTACHMENT_FAILED') {
+        setFailedIds((current) => ({
+          ...current,
+          [message.attachmentId!]: true,
+        }));
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [taskId]);
 
   const attachImages = useCallback(
     async (payloads: Awaited<ReturnType<typeof readClipboardImages>>) => {
@@ -43,135 +139,195 @@ export function TaskDescriptionField({
     [postMessage, taskId],
   );
 
-  const handleClipboardImages = useCallback(
-    async (event?: ClipboardEvent) => {
+  const handleMediaPaste = useCallback(
+    (event: ClipboardEvent) => {
       setPasteError(null);
-      const payloads = await readClipboardImages(event);
-      if (payloads.length === 0) {
+
+      const items = event.clipboardData?.items;
+      const hasMedia = Array.from(items ?? []).some(
+        (item) => item.type.startsWith('image/') || item.type.startsWith('video/'),
+      );
+
+      if (!hasMedia) {
         return false;
       }
 
-      if (event) {
-        event.preventDefault();
-      }
+      event.preventDefault();
 
-      await attachImages(payloads);
-      return true;
-    },
-    [attachImages],
-  );
-
-  const pasteFromClipboard = useCallback(async () => {
-    setPasteError(null);
-    const attached = await handleClipboardImages();
-    if (attached) {
-      return;
-    }
-
-    postMessage({ type: 'PASTE_TASK_IMAGE_FROM_CLIPBOARD', taskId });
-  }, [handleClipboardImages, postMessage, taskId]);
-
-  useEffect(() => {
-    const onPaste = (event: Event) => {
-      if (!(event instanceof ClipboardEvent)) {
-        return;
-      }
-
-      const root = rootRef.current;
-      if (!root) {
-        return;
-      }
-
-      const target = event.target as Node | null;
-      const active = document.activeElement;
-      const inField =
-        (target && root.contains(target)) ||
-        (active && root.contains(active));
-
-      if (!inField) {
-        return;
-      }
-
-      void handleClipboardImages(event).then((attached) => {
-        if (attached) {
+      void readClipboardImages(event).then((payloads) => {
+        if (payloads.length > 0) {
+          void attachImages(payloads);
           return;
         }
 
-        const text = event.clipboardData?.getData('text/plain')?.trim();
-        const hasImageType = Array.from(event.clipboardData?.types ?? []).some(
-          (type) => type.startsWith('image/'),
-        );
-
-        if (hasImageType || !text) {
-          postMessage({ type: 'PASTE_TASK_IMAGE_FROM_CLIPBOARD', taskId });
-        }
+        postMessage({ type: 'PASTE_TASK_IMAGE_FROM_CLIPBOARD', taskId });
       });
-    };
 
-    document.addEventListener('paste', onPaste, true);
-    return () => document.removeEventListener('paste', onPaste, true);
-  }, [handleClipboardImages, postMessage, taskId]);
+      return true;
+    },
+    [attachImages, postMessage, taskId],
+  );
+
+  const previewIndex = previewId
+    ? galleryImages.findIndex((image) => image.id === previewId)
+    : -1;
+  const previewMedia =
+    previewIndex >= 0 && galleryImages[previewIndex]?.uri
+      ? galleryImages[previewIndex]
+      : null;
+
+  const openPreview = (imageId: string) => {
+    const target = galleryImages.find((image) => image.id === imageId);
+    if (target?.uri) {
+      setPreviewId(imageId);
+    }
+  };
+
+  const findPreviewableIndex = (start: number, direction: -1 | 1): number => {
+    let index = start;
+    while (index >= 0 && index < galleryImages.length) {
+      if (galleryImages[index]?.uri) {
+        return index;
+      }
+      index += direction;
+    }
+    return -1;
+  };
 
   return (
-    <div className="task-description-field" ref={rootRef}>
-      <textarea
-        id="task-description"
-        className="textarea"
-        value={description}
-        placeholder="Describe the task…"
-        onChange={(event) => onDescriptionChange(event.target.value)}
-      />
-
-      <div className="task-description-field__toolbar">
-        <Button
-          variant="secondary"
-          onClick={() => postMessage({ type: 'PICK_TASK_IMAGES', taskId })}
-        >
-          Attach image
-        </Button>
-        <Button variant="secondary" onClick={() => void pasteFromClipboard()}>
-          Paste from clipboard
-        </Button>
+    <div className="task-description-field">
+      <div className="task-description-field__header">
+        <span className="field-label task-description-field__label">Description</span>
+        {mediaUploadEnabled ? (
+          <button
+            type="button"
+            className="task-description-field__add-media"
+            onClick={() => postMessage({ type: 'PICK_TASK_IMAGES', taskId })}
+          >
+            <svg
+              className="task-description-field__add-media-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+              />
+            </svg>
+            Add media
+          </button>
+        ) : null}
       </div>
 
-      <p className="task-description-field__hint">
-        Ctrl+V / Cmd+V in the description field to paste a copied screenshot
-      </p>
+      {mediaUploadEnabled ? (
+        <p className="task-description-field__hint">
+          Paste or attach images and videos — they appear below the editor.
+        </p>
+      ) : null}
+
+      <TaskDescriptionEditor
+        ref={editorRef}
+        taskId={taskId}
+        value={description}
+        placeholder="Describe the task…"
+        onChange={onDescriptionChange}
+        onMediaPaste={mediaUploadEnabled ? handleMediaPaste : undefined}
+      />
 
       {pasteError ? (
         <p className="task-description-field__error">{pasteError}</p>
       ) : null}
 
-      {images.length > 0 ? (
+      {galleryImages.length > 0 ? (
         <div className="task-description-field__gallery">
-          {images.map((image) => (
-            <figure key={image.id} className="task-description-field__thumb">
-              {image.uri ? (
-                <img src={image.uri} alt={image.fileName} loading="lazy" />
-              ) : (
-                <div className="task-description-field__thumb-placeholder">
-                  {image.fileName}
-                </div>
-              )}
-              <figcaption>{image.fileName}</figcaption>
-              <button
-                type="button"
-                className="task-description-field__remove"
-                aria-label={`Remove ${image.fileName}`}
-                onClick={() =>
-                  postMessage({
-                    type: 'REMOVE_TASK_IMAGE',
-                    taskId,
-                    imageId: image.id,
-                  })
-                }
-              >
-                ×
-              </button>
-            </figure>
-          ))}
+          <p className="task-description-field__gallery-label">Attachments</p>
+          <div className="task-description-field__gallery-grid">
+            {galleryImages.map((image) => (
+              <figure key={image.id} className="task-description-field__thumb">
+                {image.uri ? (
+                  <button
+                    type="button"
+                    className="task-description-field__thumb-open"
+                    onClick={() => openPreview(image.id)}
+                    aria-label={`Preview ${image.fileName}`}
+                  >
+                    {image.mimeType.startsWith('video/') ? (
+                      <>
+                        <video
+                          src={image.uri}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="task-description-field__video"
+                        />
+                        <span
+                          className="task-description-field__play-badge"
+                          aria-hidden
+                        >
+                          ▶
+                        </span>
+                      </>
+                    ) : (
+                      <img src={image.uri} alt={image.fileName} loading="lazy" />
+                    )}
+                  </button>
+                ) : failedIds[image.id] ? (
+                  <div className="task-description-field__thumb-placeholder task-description-field__thumb-placeholder--error">
+                    Media unavailable — deploy latest mksflow-cloud
+                  </div>
+                ) : (
+                  <div className="task-description-field__thumb-placeholder">
+                    Loading…
+                  </div>
+                )}
+                <figcaption>{image.fileName}</figcaption>
+                {mediaRemoveEnabled ? (
+                  <button
+                    type="button"
+                    className="task-description-field__remove"
+                    aria-label={`Remove ${image.fileName}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      postMessage({
+                        type: 'REMOVE_TASK_IMAGE',
+                        taskId,
+                        imageId: image.id,
+                      });
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </figure>
+            ))}
+          </div>
         </div>
+      ) : null}
+
+      {previewMedia ? (
+        <MediaPreviewLightbox
+          media={previewMedia}
+          onClose={() => setPreviewId(null)}
+          hasPrevious={findPreviewableIndex(previewIndex - 1, -1) >= 0}
+          hasNext={findPreviewableIndex(previewIndex + 1, 1) >= 0}
+          onPrevious={() => {
+            const index = findPreviewableIndex(previewIndex - 1, -1);
+            if (index >= 0) {
+              setPreviewId(galleryImages[index].id);
+            }
+          }}
+          onNext={() => {
+            const index = findPreviewableIndex(previewIndex + 1, 1);
+            if (index >= 0) {
+              setPreviewId(galleryImages[index].id);
+            }
+          }}
+        />
       ) : null}
     </div>
   );
-}
+});

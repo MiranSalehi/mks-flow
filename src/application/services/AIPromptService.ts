@@ -24,7 +24,10 @@ export class AIPromptService {
     const descriptionImages =
       task.descriptionImages.length > 0
         ? task.descriptionImages
-            .map((image) => `- @${image.relativePath}`)
+            .map(
+              (image) =>
+                `- ${image.fileName} (attachment:${image.id}) — cloud media, view in MKSFlow board`,
+            )
             .join('\n')
         : '- None attached';
 

@@ -40,4 +40,10 @@ export interface ITaskRepository {
   ): void;
   /** Returns chronological log entries for a task. */
   getTaskLogs(taskId: string): TaskLog[];
+  /** Persists a new top-to-bottom order for tasks in a project column. */
+  reorderTasks(
+    projectId: string,
+    status: TaskStatus,
+    taskIds: string[],
+  ): void;
 }
