@@ -4,11 +4,13 @@ import { TaskTransitionError } from '../../application/errors';
 import { RepositoryError } from '../../infrastructure/repositories/RepositoryError';
 import type { TaskTreeProvider } from '../treeview/TaskTreeProvider';
 import { refreshActiveTaskStatusBar } from '../statusbar/ActiveTaskStatusBar';
+import { refreshBoardLauncher } from '../statusbar/BoardLauncherStatusBar';
 
 /** Refreshes tree view and status bar after data changes. */
 export function refreshViews(treeProvider: TaskTreeProvider): void {
   treeProvider.refresh();
   refreshActiveTaskStatusBar();
+  refreshBoardLauncher();
 }
 
 /** Formats errors for user-facing command feedback. */

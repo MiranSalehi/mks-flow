@@ -116,7 +116,11 @@ export class TaskService {
   /**
    * Applies an allowed status change. Done tasks are locked; only test may move to done.
    */
-  moveToStatus(taskId: string, toStatus: TaskStatus): Task {
+  moveToStatus(
+    taskId: string,
+    toStatus: TaskStatus,
+    insertAt?: number,
+  ): Task {
     const task = this.taskRepository.findById(taskId);
     if (!task) {
       throw new TaskTransitionError(`Task not found: ${taskId}`);
@@ -130,22 +134,43 @@ export class TaskService {
       return task;
     }
 
+    let updated: Task;
     switch (`${task.status}->${toStatus}`) {
       case 'todo->doing':
-        return this.startTask(taskId);
+        updated = this.startTask(taskId);
+        break;
       case 'doing->test':
-        return this.readyForTest(taskId);
+        updated = this.readyForTest(taskId);
+        break;
       case 'test->done':
-        return this.approveTask(taskId);
+        updated = this.approveTask(taskId);
+        break;
       case 'doing->todo':
-        return this.revertToTodo(taskId);
+        updated = this.revertToTodo(taskId);
+        break;
       case 'test->doing':
-        return this.revertToDoing(taskId);
+        updated = this.revertToDoing(taskId);
+        break;
       default:
         throw new TaskTransitionError(
           `Cannot move task from "${task.status}" to "${toStatus}"`,
         );
     }
+
+    if (insertAt !== undefined) {
+      return this.insertTaskAt(updated.projectId, toStatus, taskId, insertAt);
+    }
+
+    return updated;
+  }
+
+  /** Reorders tasks within a single status column. */
+  reorderTasks(
+    projectId: string,
+    status: TaskStatus,
+    taskIds: string[],
+  ): void {
+    this.taskRepository.reorderTasks(projectId, status, taskIds);
   }
 
   /** Returns task logs for a task. */
@@ -156,6 +181,22 @@ export class TaskService {
   /** Searches tasks within a project. */
   search(projectId: string, query: string, filters: TaskFilters): Task[] {
     return this.taskRepository.search(projectId, query, filters);
+  }
+
+  private insertTaskAt(
+    projectId: string,
+    status: TaskStatus,
+    taskId: string,
+    insertAt: number,
+  ): Task {
+    const columnTasks = this.taskRepository.findByStatus(projectId, status);
+    const orderedIds = columnTasks
+      .map((item) => item.id)
+      .filter((id) => id !== taskId);
+    const index = Math.max(0, Math.min(insertAt, orderedIds.length));
+    orderedIds.splice(index, 0, taskId);
+    this.taskRepository.reorderTasks(projectId, status, orderedIds);
+    return this.taskRepository.findById(taskId)!;
   }
 
   private transition(

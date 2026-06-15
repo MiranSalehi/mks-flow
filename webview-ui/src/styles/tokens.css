@@ -1,8 +1,25 @@
+/**
+ * MKSFlow design tokens — aligned with mksflow-cloud (Tailwind brand + kanban).
+ * Surfaces still respect VS Code theme variables where possible.
+ */
 :root {
-  --mks-radius-sm: 6px;
+  /* Brand (matches tailwind.config.js in mksflow-cloud) */
+  --mks-brand-50: #eef2ff;
+  --mks-brand-100: #e0e7ff;
+  --mks-brand-300: #a5b4fc;
+  --mks-brand-400: #818cf8;
+  --mks-brand-500: #6366f1;
+  --mks-brand-600: #4f46e5;
+  --mks-brand-700: #4338ca;
+  --mks-brand-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  --mks-brand-glow: 0 0 40px -12px rgba(99, 102, 241, 0.35);
+
+  /* Radii — cloud uses rounded-xl (12px) cards, rounded-2xl (16px) columns */
+  --mks-radius-sm: 8px;
   --mks-radius-md: 10px;
-  --mks-radius-lg: 14px;
-  --mks-radius-xl: 18px;
+  --mks-radius-lg: 12px;
+  --mks-radius-xl: 16px;
+  --mks-radius-2xl: 20px;
   --mks-radius-pill: 999px;
 
   --mks-space-1: 4px;
@@ -11,6 +28,7 @@
   --mks-space-4: 16px;
   --mks-space-5: 24px;
   --mks-space-6: 32px;
+  --mks-space-8: 40px;
 
   --mks-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --mks-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -18,34 +36,43 @@
   --mks-duration: 200ms;
   --mks-duration-slow: 320ms;
 
-  --mks-shadow-1: 0 1px 2px
-    color-mix(in srgb, var(--vscode-widget-shadow, #000) 14%, transparent);
-  --mks-shadow-2: 0 6px 20px
-    color-mix(in srgb, var(--vscode-widget-shadow, #000) 20%, transparent);
-  --mks-shadow-3: 0 12px 32px
-    color-mix(in srgb, var(--vscode-widget-shadow, #000) 26%, transparent);
-  --mks-shadow-inset: inset 0 1px 0
-    color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+  --mks-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --mks-shadow-card-dark: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+  --mks-shadow-1: var(--mks-shadow-card);
+  --mks-shadow-2: 0 6px 20px rgba(15, 23, 42, 0.08);
+  --mks-shadow-3: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --mks-shadow-inset: inset 0 1px 0 color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
 
   --mks-surface-1: var(--vscode-editor-background);
   --mks-surface-2: color-mix(
     in srgb,
-    var(--vscode-sideBar-background) 72%,
+    var(--vscode-sideBar-background) 65%,
     var(--vscode-editor-background)
   );
   --mks-surface-glass: color-mix(
     in srgb,
-    var(--vscode-editor-background) 82%,
+    var(--vscode-editor-background) 88%,
     transparent
   );
+  --mks-surface-elevated: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 94%,
+    var(--vscode-foreground) 6%
+  );
 
-  --mks-accent-todo: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
-  --mks-accent-doing: var(--vscode-charts-orange, var(--vscode-editorWarning-foreground));
-  --mks-accent-test: var(--vscode-charts-purple, var(--vscode-badge-background));
-  --mks-accent-done: var(--vscode-charts-green, var(--vscode-testing-iconPassed));
+  /* Column accents — see kanban-columns.css (.kcol-*) for full theme */
+  --mks-accent-todo: #7c3aed;
+  --mks-accent-doing: #0284c7;
+  --mks-accent-test: #d97706;
+  --mks-accent-done: #059669;
 
-  --mks-glow-todo: color-mix(in srgb, var(--mks-accent-todo) 28%, transparent);
-  --mks-glow-doing: color-mix(in srgb, var(--mks-accent-doing) 28%, transparent);
-  --mks-glow-test: color-mix(in srgb, var(--mks-accent-test) 28%, transparent);
-  --mks-glow-done: color-mix(in srgb, var(--mks-accent-done) 28%, transparent);
+  --mks-glow-todo: color-mix(in srgb, var(--mks-accent-todo) 22%, transparent);
+  --mks-glow-doing: color-mix(in srgb, var(--mks-accent-doing) 22%, transparent);
+  --mks-glow-test: color-mix(in srgb, var(--mks-accent-test) 22%, transparent);
+  --mks-glow-done: color-mix(in srgb, var(--mks-accent-done) 22%, transparent);
+
+  --mks-mesh-bg:
+    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(14, 165, 233, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(168, 85, 247, 0.05) 0px, transparent 50%);
 }

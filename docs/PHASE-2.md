@@ -19,9 +19,11 @@ Personal Mode must continue working exactly as before — untouched.
 
 ## What Changes in Phase 2
 
-### Two new components are built:
-1. **Backend API** — Node.js REST API with PostgreSQL
-2. **Extension Team Mode** — connects to the API for sync
+### Two components (may live in separate repos):
+1. **Backend API** — implemented in **`mksflow-cloud`** (Laravel 13 + MySQL + Sanctum). Production API: `https://mksflow.com/api/v1`
+2. **Extension Team Mode** — this repo connects to that API (see **`PHASE-2-EXTENSION.md`**)
+
+> The original Node.js/Hono/PostgreSQL sketch below is **historical**. Use `mksflow-cloud` as the source of truth for API shapes and business rules.
 
 ---
 

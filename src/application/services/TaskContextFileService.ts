@@ -3,10 +3,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Project } from '../../domain/models/Project';
 import type { Task } from '../../domain/models/Task';
+import { ensureMksflowGitignore } from '../../shared/mksflowGitignore';
+import { MKSFLOW_TASK_CONTEXT_DIR } from '../../shared/mksflowPaths';
 import type { AIPromptService } from './AIPromptService';
-
-const CONTEXT_DIR = path.join('.mksflow', 'tasks');
-const GITIGNORE_ENTRY = '.mksflow/';
 
 export interface TaskContextFileResult {
   absolutePath: string;
@@ -15,7 +14,7 @@ export interface TaskContextFileResult {
 }
 
 /**
- * Writes task context as markdown files under `.mksflow/tasks/` in the workspace.
+ * Writes task context as markdown files under `mksflow-tasks/` in the workspace.
  */
 export class TaskContextFileService {
   constructor(private readonly aiPromptService: AIPromptService) {}
@@ -26,7 +25,7 @@ export class TaskContextFileService {
   }
 
   /**
-   * Persists task context to `{workspace}/.mksflow/tasks/{taskId}.md`.
+   * Persists task context to `{workspace}/mksflow-tasks/{taskId}.md`.
    */
   async writeContextFile(
     task: Task,
@@ -40,31 +39,17 @@ export class TaskContextFileService {
     }
 
     const markdown = this.generateMarkdown(task, project);
-    const tasksDir = path.join(workspaceFolder.uri.fsPath, CONTEXT_DIR);
+    const tasksDir = path.join(workspaceFolder.uri.fsPath, MKSFLOW_TASK_CONTEXT_DIR);
     fs.mkdirSync(tasksDir, { recursive: true });
 
     const absolutePath = path.join(tasksDir, `${task.id}.md`);
     fs.writeFileSync(absolutePath, markdown, 'utf8');
 
-    await this.ensureGitignoreEntry(workspaceFolder.uri.fsPath);
+    ensureMksflowGitignore(workspaceFolder.uri.fsPath);
 
-    const relativePath = path.posix.join(CONTEXT_DIR, `${task.id}.md`);
+    const relativePath = path.posix.join(MKSFLOW_TASK_CONTEXT_DIR, `${task.id}.md`);
 
     return { absolutePath, relativePath, markdown };
   }
 
-  private async ensureGitignoreEntry(workspaceRoot: string): Promise<void> {
-    const gitignorePath = path.join(workspaceRoot, '.gitignore');
-    if (!fs.existsSync(gitignorePath)) {
-      return;
-    }
-
-    const contents = fs.readFileSync(gitignorePath, 'utf8');
-    if (contents.split('\n').some((line) => line.trim() === GITIGNORE_ENTRY)) {
-      return;
-    }
-
-    const suffix = contents.endsWith('\n') ? '' : '\n';
-    fs.appendFileSync(gitignorePath, `${suffix}${GITIGNORE_ENTRY}\n`, 'utf8');
-  }
 }

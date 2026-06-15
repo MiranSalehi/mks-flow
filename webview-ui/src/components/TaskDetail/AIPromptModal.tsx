@@ -8,6 +8,8 @@ export interface AIContextReadyPayload {
   contextFilePath: string;
   chatPrompt: string;
   markdown?: string;
+  providerName?: string;
+  attachedToChat?: boolean;
 }
 
 interface AIPromptModalProps {
@@ -24,6 +26,9 @@ export function AIPromptModal({
   const [copied, setCopied] = useState(false);
   const [showFullContext, setShowFullContext] = useState(false);
 
+  const hostLabel = context.providerName ?? 'AI chat';
+  const attached = context.attachedToChat ?? true;
+
   const copyReference = async () => {
     try {
       await navigator.clipboard.writeText(`@${context.relativePath}`);
@@ -36,7 +41,7 @@ export function AIPromptModal({
 
   return (
     <Modal
-      title="Sent to Cursor"
+      title={attached ? `Sent to ${hostLabel}` : `Context ready for ${hostLabel}`}
       onClose={onClose}
       footer={
         <>
@@ -51,8 +56,9 @@ export function AIPromptModal({
       }
     >
       <p className="ai-context-modal__lead">
-        Task context was written and added to your current Composer chat. Press
-        Enter when you are ready.
+        {attached
+          ? `Task context was added to ${hostLabel}. Review the prompt and press Enter when ready.`
+          : `Context file was created and the chat prompt was copied to your clipboard. Paste it into ${hostLabel} or type @${context.relativePath}.`}
       </p>
       <div className="ai-context-modal__path">
         <span className="field-label">Context file</span>

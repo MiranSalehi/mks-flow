@@ -1,7 +1,7 @@
 {
   "name": "mksflow",
   "displayName": "MKSFlow",
-  "description": "AI-native task management for developers using Cursor",
+  "description": "AI-native task management for developers — Cursor, VS Code, Cline, Claude Code, Antigravity",
   "version": "0.1.0",
   "publisher": "mksflow",
   "license": "MIT",
@@ -81,7 +81,8 @@
       },
       {
         "command": "mksflow.openBoard",
-        "title": "MKSFlow: Open Board"
+        "title": "MKSFlow: Open Board",
+        "icon": "$(layout)"
       },
       {
         "command": "mksflow.exportProject",
@@ -98,6 +99,42 @@
       {
         "command": "mksflow.deleteTask",
         "title": "MKSFlow: Delete Task"
+      },
+      {
+        "command": "mksflow.connectLinear",
+        "title": "MKSFlow: Connect Linear"
+      },
+      {
+        "command": "mksflow.syncLinear",
+        "title": "MKSFlow: Sync Linear Now"
+      },
+      {
+        "command": "mksflow.disconnectLinear",
+        "title": "MKSFlow: Disconnect Linear"
+      },
+      {
+        "command": "mksflow.connectGitHub",
+        "title": "MKSFlow: Connect GitHub"
+      },
+      {
+        "command": "mksflow.syncGitHub",
+        "title": "MKSFlow: Sync GitHub Now"
+      },
+      {
+        "command": "mksflow.disconnectGitHub",
+        "title": "MKSFlow: Disconnect GitHub"
+      },
+      {
+        "command": "mksflow.connectNotion",
+        "title": "MKSFlow: Connect Notion"
+      },
+      {
+        "command": "mksflow.syncNotion",
+        "title": "MKSFlow: Sync Notion Now"
+      },
+      {
+        "command": "mksflow.disconnectNotion",
+        "title": "MKSFlow: Disconnect Notion"
       }
     ],
     "menus": {
@@ -197,18 +234,67 @@
         },
         "mksflow.aiProvider": {
           "type": "string",
-          "enum": ["cursor", "clipboard"],
-          "default": "cursor",
-          "description": "How Send to AI delivers context: cursor writes .mksflow/tasks/*.md and opens Composer; clipboard copies prompt text only."
+          "enum": ["auto", "cursor", "cline", "claude", "antigravity", "clipboard"],
+          "default": "auto",
+          "description": "How Send to AI delivers context: auto-detect Cursor, Cline, Claude Code, or Antigravity; or force a specific host; clipboard copies the prompt only."
         },
         "mksflow.showTimerInStatusBar": {
           "type": "boolean",
           "default": true
         },
+        "mksflow.showBoardLauncher": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the MKSFlow board launcher in the status bar (right side) with an attention badge."
+        },
         "mksflow.quickCaptureDefaultProject": {
           "type": "string",
           "default": "",
           "description": "Default project ID for Quick Capture"
+        },
+        "mksflow.apiBaseUrl": {
+          "type": "string",
+          "default": "https://mksflow.com/api/v1",
+          "description": "MKSFlow Cloud API base URL."
+        },
+        "mksflow.cloudSyncIntervalMs": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 10000,
+          "description": "How often to poll MKSFlow Cloud for team task updates (milliseconds)."
+        },
+        "mksflow.linear.syncInterval": {
+          "type": "number",
+          "default": 300,
+          "minimum": 60,
+          "description": "How often to sync linked Linear projects (seconds)."
+        },
+        "mksflow.linear.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically sync Linear-linked projects on an interval."
+        },
+        "mksflow.github.syncInterval": {
+          "type": "number",
+          "default": 300,
+          "minimum": 60,
+          "description": "How often to sync GitHub-linked projects (seconds)."
+        },
+        "mksflow.github.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically sync GitHub-linked projects on an interval."
+        },
+        "mksflow.notion.syncInterval": {
+          "type": "number",
+          "default": 300,
+          "minimum": 60,
+          "description": "How often to sync Notion-linked projects (seconds)."
+        },
+        "mksflow.notion.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically sync Notion-linked projects on an interval."
         }
       }
     }

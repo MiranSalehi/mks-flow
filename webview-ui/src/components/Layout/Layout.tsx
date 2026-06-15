@@ -1,7 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppData } from '../../hooks/useAppData';
 import { useBoardShortcuts } from '../../hooks/useBoardShortcuts';
-import type { TaskStatus, Task } from '../../types/messages';
+import type { BoardMode, TaskStatus, Task } from '../../types/messages';
+import { STATUS_LABELS } from '../../types/messages';
+import { GitHubIntegrationPanel } from '../GitHub/GitHubIntegrationPanel';
+import { NotionIntegrationPanel } from '../Notion/NotionIntegrationPanel';
+import { LinearIntegrationPanel } from '../Linear/LinearIntegrationPanel';
+import { CloudLoginPanel } from '../Cloud/CloudLoginPanel';
+import { TeamModeBar } from '../Cloud/TeamModeBar';
+import { BoardModeLoadingOverlay } from './BoardModeLoadingOverlay';
 import { AIPromptModal, LegacyAIPromptModal } from '../TaskDetail/AIPromptModal';
 import { TaskDetail } from '../TaskDetail/TaskDetail';
 import { ProjectList } from '../ProjectList/ProjectList';
@@ -9,14 +16,8 @@ import { SearchFilter } from '../SearchFilter/SearchFilter';
 import { TaskBoard } from '../TaskBoard/TaskBoard';
 import { Button } from '../shared/Button';
 import { Modal } from '../shared/Modal';
+import { BrandHeader } from './BrandHeader';
 import { Sidebar } from './Sidebar';
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'Todo',
-  doing: 'Doing',
-  test: 'Test',
-  done: 'Done',
-};
 
 const PROJECT_COLOR_VARS = [
   'var(--vscode-charts-blue)',
@@ -48,13 +49,47 @@ export function Layout() {
     setSelectedTaskId,
     toggleSidebar,
     setSearchQuery,
-    togglePriorityFilter,
-    toggleTagFilter,
+    setPriorityFilter,
+    setTagFilter,
     clearFilters,
     setAiPrompt,
     setAiContext,
     setError,
+    boardMode,
+    cloudAuthenticated,
+    cloudUser,
+    cloudLastSyncAt,
+    syncStatus,
+    syncMessage,
+    boardModeSwitching,
+    beginBoardModeSwitch,
+    linearConnected,
+    linearOrganization,
+    linearSyncStatus,
+    linearProjectConfigs,
+    linearTeams,
+    linearPanelOpen,
+    setLinearPanelOpen,
+    githubConnected,
+    githubUsername,
+    githubSyncStatus,
+    githubRepos,
+    githubProjects,
+    githubProjectConfigs,
+    githubPanelOpen,
+    setGitHubPanelOpen,
+    notionConnected,
+    notionWorkspaceName,
+    notionSyncStatus,
+    notionDatabases,
+    notionPropertyMapping,
+    notionProjectConfigs,
+    notionPanelOpen,
+    setNotionPanelOpen,
   } = useAppData();
+
+  const isTeamMode = boardMode === 'team';
+  const showCloudLogin = isTeamMode && !cloudAuthenticated;
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -69,6 +104,18 @@ export function Layout() {
   const selectedTask = useMemo(
     () => allTasks.find((task) => task.id === selectedTaskId),
     [allTasks, selectedTaskId],
+  );
+
+  const handleSetBoardMode = useCallback(
+    (mode: BoardMode) => {
+      if (mode === boardMode || boardModeSwitching) {
+        return;
+      }
+
+      beginBoardModeSwitch(mode);
+      postMessage({ type: 'SET_BOARD_MODE', mode });
+    },
+    [beginBoardModeSwitch, boardMode, boardModeSwitching, postMessage],
   );
 
   const handleTaskSave = useCallback(
@@ -137,6 +184,61 @@ export function Layout() {
     onCloseDetail: () => setSelectedTaskId(null),
   });
 
+  useEffect(() => {
+    if (linearPanelOpen && selectedProjectId && !isTeamMode) {
+      postMessage({
+        type: 'LINEAR_GET_PROJECT_CONFIG',
+        projectId: selectedProjectId,
+      });
+      if (linearConnected) {
+        postMessage({ type: 'LINEAR_GET_TEAMS' });
+      }
+    }
+  }, [
+    linearPanelOpen,
+    selectedProjectId,
+    isTeamMode,
+    linearConnected,
+    postMessage,
+  ]);
+
+  useEffect(() => {
+    if (githubPanelOpen && selectedProjectId && !isTeamMode) {
+      postMessage({
+        type: 'GITHUB_GET_PROJECT_CONFIG',
+        projectId: selectedProjectId,
+      });
+      if (githubConnected) {
+        postMessage({ type: 'GITHUB_GET_REPOS' });
+        postMessage({ type: 'GITHUB_GET_PROJECTS' });
+      }
+    }
+  }, [
+    githubPanelOpen,
+    selectedProjectId,
+    isTeamMode,
+    githubConnected,
+    postMessage,
+  ]);
+
+  useEffect(() => {
+    if (notionPanelOpen && selectedProjectId && !isTeamMode) {
+      postMessage({
+        type: 'NOTION_GET_PROJECT_CONFIG',
+        projectId: selectedProjectId,
+      });
+      if (notionConnected) {
+        postMessage({ type: 'NOTION_GET_DATABASES' });
+      }
+    }
+  }, [
+    notionPanelOpen,
+    selectedProjectId,
+    isTeamMode,
+    notionConnected,
+    postMessage,
+  ]);
+
   const createTask = () => {
     if (!selectedProjectId || !newTaskStatus) {
       return;
@@ -164,10 +266,12 @@ export function Layout() {
         }`}
       >
         <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+        <BrandHeader collapsed={sidebarCollapsed} />
         <ProjectList
           projects={projects}
           selectedProjectId={selectedProjectId}
           collapsed={sidebarCollapsed}
+          allowManage={!isTeamMode}
           onSelect={setSelectedProjectId}
           onCreate={() => setNewProjectOpen(true)}
           onDelete={(projectId) =>
@@ -186,21 +290,29 @@ export function Layout() {
           </div>
         ) : null}
 
+        <TeamModeBar
+          boardMode={boardMode}
+          boardModeSwitching={boardModeSwitching}
+          cloudAuthenticated={cloudAuthenticated}
+          cloudUser={cloudUser}
+          cloudLastSyncAt={cloudLastSyncAt}
+          syncStatus={syncStatus}
+          syncMessage={syncMessage}
+          onSetMode={handleSetBoardMode}
+          onSyncNow={() => postMessage({ type: 'CLOUD_SYNC_NOW' })}
+          onLogout={() => postMessage({ type: 'CLOUD_LOGOUT' })}
+        />
+
         <header className="layout__header layout__header--sticky">
           <Button variant="ghost" onClick={toggleSidebar}>
             {sidebarCollapsed ? '»' : '«'}
           </Button>
           <div className="layout__header-brand">
             {selectedProject ? (
-              <span
-                className="layout__project-dot"
-                style={{ backgroundColor: selectedProject.color }}
-                aria-hidden
-              />
-            ) : null}
-            <h1 className="layout__title layout__title--large">
-              {selectedProject?.name ?? 'MKSFlow Board'}
-            </h1>
+              <h1 className="layout__title layout__title--large">{selectedProject.name}</h1>
+            ) : (
+              <h1 className="layout__title layout__title--large">MKSFlow Board</h1>
+            )}
           </div>
           <SearchFilter
             ref={searchInputRef}
@@ -209,37 +321,88 @@ export function Layout() {
             availableTags={availableTags}
             activeTags={filters.tags ?? []}
             onQueryChange={setSearchQuery}
-            onTogglePriority={togglePriorityFilter}
-            onToggleTag={toggleTagFilter}
+            onSetPriority={setPriorityFilter}
+            onSetTag={setTagFilter}
             onClear={clearFilters}
           />
-          {selectedProjectId ? (
-            <Button
-              variant="secondary"
-              onClick={() =>
-                postMessage({
-                  type: 'EXPORT_PROJECT',
-                  projectId: selectedProjectId,
-                })
-              }
-            >
-              Export
-            </Button>
+          {selectedProjectId && !isTeamMode ? (
+            <div className="layout__header-actions">
+              <Button
+                variant="secondary"
+                onClick={() => setNotionPanelOpen(true)}
+              >
+                Notion
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setGitHubPanelOpen(true)}
+              >
+                GitHub
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setLinearPanelOpen(true)}
+              >
+                Linear
+              </Button>
+              <Button
+                className="layout__export-btn"
+                onClick={() =>
+                  postMessage({
+                    type: 'EXPORT_PROJECT',
+                    projectId: selectedProjectId,
+                  })
+                }
+              >
+                Export
+              </Button>
+            </div>
           ) : null}
         </header>
 
-        <div className="layout__content">
-          {!selectedProjectId ? (
+        <div
+          className={`layout__content${
+            boardModeSwitching ? ' layout__content--switching' : ''
+          }`}
+        >
+          {boardModeSwitching ? (
+            <BoardModeLoadingOverlay mode={boardMode} />
+          ) : showCloudLogin ? (
+            <CloudLoginPanel
+              onLogin={(email, password) =>
+                postMessage({ type: 'CLOUD_LOGIN', email, password })
+              }
+            />
+          ) : !selectedProjectId ? (
             <div className="empty-state">
-              Create a project or use Quick Capture to get started.
+              {isTeamMode
+                ? 'No team projects with tasks assigned to you yet.'
+                : 'Create a project or use Quick Capture to get started.'}
             </div>
           ) : (
             <TaskBoard
               tasks={tasks}
               elapsedByTaskId={elapsedByTaskId}
-              onMoveTask={(taskId, toStatus) =>
-                postMessage({ type: 'MOVE_TASK', taskId, toStatus })
+              readOnly={isTeamMode}
+              onMoveTask={(taskId, toStatus, insertAt) =>
+                postMessage({
+                  type: 'MOVE_TASK',
+                  taskId,
+                  toStatus,
+                  insertAt,
+                })
               }
+              onReorderTasks={(status, taskIds) => {
+                if (!selectedProjectId) {
+                  return;
+                }
+                postMessage({
+                  type: 'REORDER_TASKS',
+                  projectId: selectedProjectId,
+                  status,
+                  taskIds,
+                });
+              }}
               onAddTask={addTask}
               onOpenTask={setSelectedTaskId}
               onStartTask={(taskId) =>
@@ -270,10 +433,12 @@ export function Layout() {
 
       {selectedTask ? (
         <TaskDetail
+          key={selectedTask.id}
           task={selectedTask}
           logs={taskLogs}
           gitFiles={gitFiles}
           elapsed={elapsedByTaskId[selectedTask.id]}
+          isCloud={selectedTask.source === 'cloud'}
           onClose={() => setSelectedTaskId(null)}
           onSave={handleTaskSave}
           onDelete={() => {
@@ -339,6 +504,136 @@ export function Layout() {
                 createProject();
               }
             }}
+          />
+        </Modal>
+      ) : null}
+
+      {linearPanelOpen && selectedProject && !isTeamMode ? (
+        <Modal
+          title="Integrations"
+          onClose={() => setLinearPanelOpen(false)}
+        >
+          <LinearIntegrationPanel
+            projectId={selectedProject.id}
+            projectName={selectedProject.name}
+            connected={linearConnected}
+            organization={linearOrganization}
+            syncStatus={linearSyncStatus}
+            projectConfig={linearProjectConfigs[selectedProject.id] ?? null}
+            teams={linearTeams}
+            onConnect={(apiKey) =>
+              postMessage({ type: 'LINEAR_CONNECT', apiKey })
+            }
+            onDisconnect={() => postMessage({ type: 'LINEAR_DISCONNECT' })}
+            onTestConnection={() =>
+              postMessage({ type: 'LINEAR_TEST_CONNECTION' })
+            }
+            onLoadTeams={() => postMessage({ type: 'LINEAR_GET_TEAMS' })}
+            onLink={(teamId, linearProjectId) =>
+              postMessage({
+                type: 'LINEAR_LINK_PROJECT',
+                projectId: selectedProject.id,
+                teamId,
+                linearProjectId,
+              })
+            }
+            onUnlink={() =>
+              postMessage({
+                type: 'LINEAR_UNLINK_PROJECT',
+                projectId: selectedProject.id,
+              })
+            }
+            onSyncNow={() =>
+              postMessage({
+                type: 'LINEAR_SYNC_NOW',
+                projectId: selectedProject.id,
+              })
+            }
+            onClose={() => setLinearPanelOpen(false)}
+          />
+        </Modal>
+      ) : null}
+
+      {githubPanelOpen && selectedProject && !isTeamMode ? (
+        <Modal title="Integrations" onClose={() => setGitHubPanelOpen(false)}>
+          <GitHubIntegrationPanel
+            projectId={selectedProject.id}
+            projectName={selectedProject.name}
+            connected={githubConnected}
+            username={githubUsername}
+            syncStatus={githubSyncStatus}
+            projectConfig={githubProjectConfigs[selectedProject.id] ?? null}
+            repos={githubRepos}
+            ghProjects={githubProjects}
+            onConnect={(token) => postMessage({ type: 'GITHUB_CONNECT', token })}
+            onDisconnect={() => postMessage({ type: 'GITHUB_DISCONNECT' })}
+            onTestConnection={() =>
+              postMessage({ type: 'GITHUB_TEST_CONNECTION' })
+            }
+            onLink={(payload) =>
+              postMessage({
+                type: 'GITHUB_LINK_PROJECT',
+                projectId: selectedProject.id,
+                ...payload,
+              })
+            }
+            onUnlink={() =>
+              postMessage({
+                type: 'GITHUB_UNLINK_PROJECT',
+                projectId: selectedProject.id,
+              })
+            }
+            onSyncNow={() =>
+              postMessage({
+                type: 'GITHUB_SYNC_NOW',
+                projectId: selectedProject.id,
+              })
+            }
+            onClose={() => setGitHubPanelOpen(false)}
+          />
+        </Modal>
+      ) : null}
+
+      {notionPanelOpen && selectedProject && !isTeamMode ? (
+        <Modal title="Integrations" onClose={() => setNotionPanelOpen(false)}>
+          <NotionIntegrationPanel
+            projectId={selectedProject.id}
+            projectName={selectedProject.name}
+            connected={notionConnected}
+            workspaceName={notionWorkspaceName}
+            syncStatus={notionSyncStatus}
+            projectConfig={notionProjectConfigs[selectedProject.id] ?? null}
+            databases={notionDatabases}
+            mapping={notionPropertyMapping}
+            onConnect={(token) => postMessage({ type: 'NOTION_CONNECT', token })}
+            onDisconnect={() => postMessage({ type: 'NOTION_DISCONNECT' })}
+            onTestConnection={() =>
+              postMessage({ type: 'NOTION_TEST_CONNECTION' })
+            }
+            onLoadDatabases={() => postMessage({ type: 'NOTION_GET_DATABASES' })}
+            onLoadSchema={(databaseId) =>
+              postMessage({ type: 'NOTION_GET_DATABASE_SCHEMA', databaseId })
+            }
+            onLink={(payload) =>
+              postMessage({
+                type: 'NOTION_LINK_PROJECT',
+                projectId: selectedProject.id,
+                ...payload,
+              })
+            }
+            onUnlink={() =>
+              postMessage({
+                type: 'NOTION_UNLINK_PROJECT',
+                projectId: selectedProject.id,
+              })
+            }
+            onSyncNow={() =>
+              postMessage({
+                type: 'NOTION_SYNC_NOW',
+                projectId: selectedProject.id,
+              })
+            }
+            onClose={() => setNotionPanelOpen(false)}
           />
         </Modal>
       ) : null}

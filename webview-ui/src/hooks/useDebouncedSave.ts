@@ -9,9 +9,15 @@ export function useDebouncedSave(
   delayMs = 500,
 ): void {
   const onSaveRef = useRef(onSave);
+  const isFirstRun = useRef(true);
   onSaveRef.current = onSave;
 
   useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       onSaveRef.current();
     }, delayMs);

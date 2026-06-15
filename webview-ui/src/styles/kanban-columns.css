@@ -1,0 +1,118 @@
+/**
+ * Kanban column themes — synced from mksflow-cloud resources/css/app.css
+ * Each .kcol-{status} defines variables consumed by .task-column and .task-card.
+ */
+
+.kcol-todo {
+  --kcol-accent: #7c3aed;
+  --kcol-accent-soft: rgba(124, 58, 237, 0.1);
+  --kcol-border: rgba(124, 58, 237, 0.18);
+  --kcol-shadow: 0 2px 16px rgba(124, 58, 237, 0.14), 0 0 0 1px rgba(124, 58, 237, 0.12);
+  --kcol-glow: rgba(139, 92, 246, 0.12);
+  --kcol-dot: linear-gradient(160deg, #a78bfa, #7c3aed);
+  --kcol-card-ring: rgba(167, 139, 250, 0.35);
+  --kcol-card-hover: rgba(124, 58, 237, 0.18);
+  --kcol-body-bg: rgba(245, 243, 255, 0.85);
+  --kcol-header-pill: rgba(124, 58, 237, 0.1);
+  --kcol-empty-border: rgba(124, 58, 237, 0.25);
+  --kcol-empty-text: rgba(124, 58, 237, 0.55);
+}
+
+.kcol-doing {
+  --kcol-accent: #0284c7;
+  --kcol-accent-soft: rgba(2, 132, 199, 0.1);
+  --kcol-border: rgba(2, 132, 199, 0.18);
+  --kcol-shadow: 0 2px 16px rgba(2, 132, 199, 0.14), 0 0 0 1px rgba(2, 132, 199, 0.12);
+  --kcol-glow: rgba(14, 165, 233, 0.12);
+  --kcol-dot: linear-gradient(160deg, #38bdf8, #0284c7);
+  --kcol-card-ring: rgba(56, 189, 248, 0.35);
+  --kcol-card-hover: rgba(2, 132, 199, 0.18);
+  --kcol-body-bg: rgba(240, 249, 255, 0.85);
+  --kcol-header-pill: rgba(2, 132, 199, 0.1);
+  --kcol-empty-border: rgba(2, 132, 199, 0.25);
+  --kcol-empty-text: rgba(2, 132, 199, 0.55);
+}
+
+.kcol-test {
+  --kcol-accent: #d97706;
+  --kcol-accent-soft: rgba(217, 119, 6, 0.1);
+  --kcol-border: rgba(217, 119, 6, 0.18);
+  --kcol-shadow: 0 2px 16px rgba(217, 119, 6, 0.14), 0 0 0 1px rgba(217, 119, 6, 0.12);
+  --kcol-glow: rgba(245, 158, 11, 0.12);
+  --kcol-dot: linear-gradient(160deg, #fbbf24, #d97706);
+  --kcol-card-ring: rgba(251, 191, 36, 0.4);
+  --kcol-card-hover: rgba(217, 119, 6, 0.18);
+  --kcol-body-bg: rgba(255, 251, 235, 0.88);
+  --kcol-header-pill: rgba(217, 119, 6, 0.1);
+  --kcol-empty-border: rgba(217, 119, 6, 0.25);
+  --kcol-empty-text: rgba(180, 83, 9, 0.55);
+}
+
+.kcol-done {
+  --kcol-accent: #059669;
+  --kcol-accent-soft: rgba(5, 150, 105, 0.1);
+  --kcol-border: rgba(5, 150, 105, 0.18);
+  --kcol-shadow: 0 2px 16px rgba(5, 150, 105, 0.14), 0 0 0 1px rgba(5, 150, 105, 0.12);
+  --kcol-glow: rgba(16, 185, 129, 0.12);
+  --kcol-dot: linear-gradient(160deg, #34d399, #059669);
+  --kcol-card-ring: rgba(52, 211, 153, 0.35);
+  --kcol-card-hover: rgba(5, 150, 105, 0.18);
+  --kcol-body-bg: rgba(236, 253, 245, 0.85);
+  --kcol-header-pill: rgba(5, 150, 105, 0.1);
+  --kcol-empty-border: rgba(5, 150, 105, 0.25);
+  --kcol-empty-text: rgba(5, 150, 105, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  .kcol-todo {
+    --kcol-accent-soft: rgba(124, 58, 237, 0.14);
+    --kcol-border: rgba(124, 58, 237, 0.22);
+    --kcol-shadow: 0 2px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(124, 58, 237, 0.2);
+    --kcol-glow: rgba(124, 58, 237, 0.18);
+    --kcol-body-bg: rgba(20, 10, 45, 0.75);
+    --kcol-header-pill: rgba(167, 139, 250, 0.15);
+    --kcol-card-ring: rgba(124, 58, 237, 0.28);
+    --kcol-card-hover: rgba(124, 58, 237, 0.22);
+    --kcol-empty-border: rgba(124, 58, 237, 0.2);
+    --kcol-empty-text: rgba(167, 139, 250, 0.45);
+  }
+
+  .kcol-doing {
+    --kcol-accent-soft: rgba(2, 132, 199, 0.14);
+    --kcol-border: rgba(2, 132, 199, 0.22);
+    --kcol-shadow: 0 2px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(2, 132, 199, 0.2);
+    --kcol-glow: rgba(2, 132, 199, 0.18);
+    --kcol-body-bg: rgba(5, 20, 40, 0.75);
+    --kcol-header-pill: rgba(56, 189, 248, 0.15);
+    --kcol-card-ring: rgba(2, 132, 199, 0.28);
+    --kcol-card-hover: rgba(2, 132, 199, 0.22);
+    --kcol-empty-border: rgba(2, 132, 199, 0.2);
+    --kcol-empty-text: rgba(56, 189, 248, 0.45);
+  }
+
+  .kcol-test {
+    --kcol-accent-soft: rgba(217, 119, 6, 0.14);
+    --kcol-border: rgba(217, 119, 6, 0.22);
+    --kcol-shadow: 0 2px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(217, 119, 6, 0.2);
+    --kcol-glow: rgba(217, 119, 6, 0.18);
+    --kcol-body-bg: rgba(40, 20, 5, 0.78);
+    --kcol-header-pill: rgba(251, 191, 36, 0.15);
+    --kcol-card-ring: rgba(217, 119, 6, 0.28);
+    --kcol-card-hover: rgba(217, 119, 6, 0.22);
+    --kcol-empty-border: rgba(217, 119, 6, 0.2);
+    --kcol-empty-text: rgba(251, 191, 36, 0.45);
+  }
+
+  .kcol-done {
+    --kcol-accent-soft: rgba(5, 150, 105, 0.14);
+    --kcol-border: rgba(5, 150, 105, 0.22);
+    --kcol-shadow: 0 2px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(5, 150, 105, 0.2);
+    --kcol-glow: rgba(5, 150, 105, 0.18);
+    --kcol-body-bg: rgba(5, 25, 20, 0.78);
+    --kcol-header-pill: rgba(52, 211, 153, 0.15);
+    --kcol-card-ring: rgba(5, 150, 105, 0.28);
+    --kcol-card-hover: rgba(5, 150, 105, 0.22);
+    --kcol-empty-border: rgba(5, 150, 105, 0.2);
+    --kcol-empty-text: rgba(52, 211, 153, 0.45);
+  }
+}

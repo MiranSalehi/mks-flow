@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GitFiles, Task, TaskLog, TaskPriority } from '../../types/messages';
 import { PRIORITY_LABELS } from '../../types/messages';
 import { useDebouncedSave } from '../../hooks/useDebouncedSave';
 import { formatElapsed } from '../../hooks/useVSCode';
 import { Button } from '../shared/Button';
-import { TaskDescriptionField } from './TaskDescriptionField';
+import { TaskDescriptionField, type TaskDescriptionFieldHandle } from './TaskDescriptionField';
 
 interface TaskDetailProps {
   task: Task;
   logs: TaskLog[];
   gitFiles: GitFiles;
   elapsed?: number;
+  isCloud?: boolean;
   onClose: () => void;
   onSave: (data: Partial<Task>) => void;
   onDelete: () => void;
@@ -27,6 +28,7 @@ export function TaskDetail({
   logs,
   gitFiles,
   elapsed,
+  isCloud = false,
   onClose,
   onSave,
   onDelete,
@@ -47,7 +49,32 @@ export function TaskDetail({
   const [criteriaText, setCriteriaText] = useState(
     task.acceptanceCriteria.join('\n'),
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const descriptionFieldRef = useRef<TaskDescriptionFieldHandle>(null);
 
+  const clearSaveState = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    setIsSaving(false);
+  }, []);
+
+  const beginSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    setIsSaving(true);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
+      setIsSaving(false);
+    }, 15000);
+  }, []);
+
+  // Only reset the form when switching tasks — not on every TASKS_UPDATED echo,
+  // which would overwrite in-progress typing (especially trailing spaces).
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description);
@@ -55,24 +82,56 @@ export function TaskDetail({
     setTagsText(task.tags.join(', '));
     setRelatedFilesText(task.relatedFiles.join('\n'));
     setCriteriaText(task.acceptanceCriteria.join('\n'));
-  }, [
-    task.id,
-    task.title,
-    task.description,
-    task.priority,
-    task.tags.join(','),
-    task.relatedFiles.join('\n'),
-    task.acceptanceCriteria.join('\n'),
-  ]);
+  }, [task.id]);
 
   useEffect(() => {
     onLoadLogs();
   }, [task.id, onLoadLogs]);
 
+  useEffect(() => {
+    clearSaveState();
+  }, [clearSaveState, task.id]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const message = event.data as {
+        type?: string;
+        tasks?: Task[];
+      };
+
+      if (message.type === 'TASKS_UPDATED') {
+        const updated = message.tasks?.some((item) => item.id === task.id);
+        if (updated) {
+          clearSaveState();
+        }
+        return;
+      }
+
+      if (message.type === 'ERROR') {
+        clearSaveState();
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [clearSaveState, task.id]);
+
+  useEffect(
+    () => () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   const saveCoreFields = useCallback(() => {
+    const currentDescription =
+      descriptionFieldRef.current?.getDescription() ?? description;
+
     onSave({
-      title: title.trim(),
-      description: description.trim(),
+      title,
+      description: currentDescription,
       priority,
     });
   }, [description, onSave, priority, title]);
@@ -80,9 +139,14 @@ export function TaskDetail({
   useDebouncedSave(`${title}\n${description}`, saveCoreFields, 500);
 
   const saveAll = () => {
+    const currentDescription =
+      descriptionFieldRef.current?.getDescription() ?? description;
+
+    setDescription(currentDescription);
+    beginSave();
     onSave({
       title: title.trim(),
-      description: description.trim(),
+      description: currentDescription.trim(),
       priority,
       tags: splitCsv(tagsText),
       relatedFiles: splitLines(relatedFilesText),
@@ -117,17 +181,24 @@ export function TaskDetail({
             className="input"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            onBlur={() => {
+              const trimmed = title.trim();
+              if (trimmed !== title) {
+                setTitle(trimmed);
+              }
+              onSave({ title: trimmed });
+            }}
           />
         </div>
 
         <div className="task-detail__section field-group">
-          <label className="field-label" htmlFor="task-description">
-            Description
-          </label>
           <TaskDescriptionField
+            ref={descriptionFieldRef}
             taskId={task.id}
             description={description}
             images={task.descriptionImages ?? []}
+            mediaUploadEnabled
+            mediaRemoveEnabled
             onDescriptionChange={setDescription}
           />
         </div>
@@ -200,23 +271,25 @@ export function TaskDetail({
           />
         </div>
 
-        <div className="task-detail__section field-group">
-          <span className="field-label">Timer</span>
-          <div>
-            {elapsed !== undefined
-              ? formatElapsed(elapsed)
-              : formatElapsed(task.timeTracked)}
-            {task.timerStartedAt ? (
-              <Button variant="secondary" onClick={onStopTimer}>
-                Stop
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={onStartTimer}>
-                Start
-              </Button>
-            )}
+        {!isCloud ? (
+          <div className="task-detail__section field-group">
+            <span className="field-label">Timer</span>
+            <div>
+              {elapsed !== undefined
+                ? formatElapsed(elapsed)
+                : formatElapsed(task.timeTracked)}
+              {task.timerStartedAt ? (
+                <Button variant="secondary" onClick={onStopTimer}>
+                  Stop
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={onStartTimer}>
+                  Start
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="task-detail__section field-group">
           <span className="field-label">Git Changed Files</span>
@@ -240,24 +313,48 @@ export function TaskDetail({
         </div>
 
         <div className="task-detail__section field-group">
-          <span className="field-label">Timeline</span>
-          <div className="timeline">
-            {logs.map((log) => (
-              <div key={log.id} className="timeline__item">
-                <div>{log.message}</div>
-                <div>{new Date(log.createdAt).toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={saveAll}>Save all</Button>
-          <Button variant="secondary" onClick={onDelete}>
-            Delete
-          </Button>
+          <details className="collapsible-panel">
+            <summary className="collapsible-panel__summary">
+              <span className="collapsible-panel__summary-text">
+                <span className="field-label">Timeline</span>
+                {logs.length > 0 ? (
+                  <span className="collapsible-panel__meta">
+                    {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
+                  </span>
+                ) : null}
+              </span>
+              <span className="collapsible-panel__chevron" aria-hidden>
+                ›
+              </span>
+            </summary>
+            <div className="collapsible-panel__body">
+              {logs.length === 0 ? (
+                <p className="collapsible-panel__empty">No activity yet.</p>
+              ) : (
+                <div className="timeline">
+                  {logs.map((log) => (
+                    <div key={log.id} className="timeline__item">
+                      <div>{log.message}</div>
+                      <div>{new Date(log.createdAt).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
         </div>
       </div>
+
+      <footer className="task-detail__footer">
+        <Button onClick={saveAll} loading={isSaving}>
+          {isSaving ? 'Saving…' : 'Save changes'}
+        </Button>
+        {!isCloud ? (
+          <Button variant="secondary" onClick={onDelete} disabled={isSaving}>
+            Delete
+          </Button>
+        ) : null}
+      </footer>
     </aside>
   );
 }

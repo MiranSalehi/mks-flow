@@ -7,8 +7,9 @@ import type { TaskDescriptionImage } from '../../domain/models/TaskDescriptionIm
 import type { ITaskRepository } from '../../domain/interfaces/ITaskRepository';
 import { RepositoryError } from '../../infrastructure/repositories/RepositoryError';
 
+import { ensureMksflowGitignore } from '../../shared/mksflowGitignore';
+
 const ATTACHMENTS_DIR = path.join('.mksflow', 'attachments');
-const GITIGNORE_ENTRY = '.mksflow/';
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 const MIME_EXTENSION: Record<string, string> = {
@@ -37,28 +38,49 @@ export class TaskImageService {
   }
 
   /**
-   * Reads an image from the OS clipboard via Electron (extension host).
-   * Webviews cannot access image clipboard reliably; this is the desktop fallback.
+   * Reads an image from the OS clipboard without attaching it to a local task.
    */
-  async attachFromSystemClipboard(taskId: string): Promise<Task | null> {
+  readSystemClipboardImage(): {
+    fileName: string;
+    mimeType: string;
+    buffer: Buffer;
+  } | null {
     const electronClipboard = getElectronClipboard();
     if (!electronClipboard) {
-      void vscode.window.showWarningMessage(
-        'Image clipboard is not available in this environment.',
-      );
       return null;
     }
 
     const image = electronClipboard.readImage();
     if (image.isEmpty()) {
+      return null;
+    }
+
+    return {
+      fileName: 'pasted-image.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(image.toPNG()),
+    };
+  }
+
+  /**
+   * Reads an image from the OS clipboard via Electron (extension host).
+   * Webviews cannot access image clipboard reliably; this is the desktop fallback.
+   */
+  async attachFromSystemClipboard(taskId: string): Promise<Task | null> {
+    const payload = this.readSystemClipboardImage();
+    if (!payload) {
       void vscode.window.showWarningMessage(
         'No image on clipboard. Copy a screenshot first.',
       );
       return null;
     }
 
-    const buffer = Buffer.from(image.toPNG());
-    return this.attachBuffer(taskId, 'pasted-image.png', 'image/png', buffer);
+    return this.attachBuffer(
+      taskId,
+      payload.fileName,
+      payload.mimeType,
+      payload.buffer,
+    );
   }
 
   /** Opens a file picker and attaches selected images. */
@@ -208,18 +230,7 @@ export class TaskImageService {
   }
 
   private async ensureGitignoreEntry(workspaceRoot: string): Promise<void> {
-    const gitignorePath = path.join(workspaceRoot, '.gitignore');
-    if (!fs.existsSync(gitignorePath)) {
-      return;
-    }
-
-    const contents = fs.readFileSync(gitignorePath, 'utf8');
-    if (contents.split('\n').some((line) => line.trim() === GITIGNORE_ENTRY)) {
-      return;
-    }
-
-    const suffix = contents.endsWith('\n') ? '' : '\n';
-    fs.appendFileSync(gitignorePath, `${suffix}${GITIGNORE_ENTRY}\n`, 'utf8');
+    ensureMksflowGitignore(workspaceRoot);
   }
 }
 

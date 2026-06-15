@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import type { WebviewMessage } from '../../../shared/messages';
+import type { CloudContext } from '../../../application/cloudContextHolder';
+import type { WebviewMessage, ExtensionMessage } from '../../../shared/messages';
 import { getContainer } from '../../../application/containerHolder';
 import { WEBVIEW_VIEW_TYPE } from '../../../shared/constants';
 import type { TaskTreeProvider } from '../../treeview/TaskTreeProvider';
@@ -15,6 +16,7 @@ const TIMER_TICK_MS = 60_000;
 export class MainPanel {
   public static currentPanel: MainPanel | undefined;
   private static treeProvider: TaskTreeProvider | undefined;
+  private static cloudContext: CloudContext | undefined;
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
@@ -24,17 +26,19 @@ export class MainPanel {
 
   private constructor(
     panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
+    extensionContext: vscode.ExtensionContext,
     treeProvider?: TaskTreeProvider,
   ) {
     this._panel = panel;
-    this._extensionUri = extensionUri;
+    this._extensionUri = extensionContext.extensionUri;
     this._messageHandler = new WebviewMessageHandler(
       (message) => {
         void this._panel.webview.postMessage(message);
       },
       panel.webview,
+      extensionContext,
       treeProvider,
+      MainPanel.cloudContext,
     );
 
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
@@ -54,6 +58,11 @@ export class MainPanel {
   /** Sets the tree provider used to refresh the sidebar after webview mutations. */
   static setTreeProvider(provider: TaskTreeProvider): void {
     MainPanel.treeProvider = provider;
+  }
+
+  /** Sets cloud services used by the board webview in Team mode. */
+  static setCloudContext(context: CloudContext): void {
+    MainPanel.cloudContext = context;
   }
 
   /**
@@ -83,6 +92,7 @@ export class MainPanel {
         retainContextWhenHidden: true,
         localResourceRoots: [
           vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
+          context.globalStorageUri,
           ...(vscode.workspace.workspaceFolders?.map((folder) => folder.uri) ??
             []),
         ],
@@ -91,7 +101,7 @@ export class MainPanel {
 
     MainPanel.currentPanel = new MainPanel(
       panel,
-      extensionUri,
+      context,
       MainPanel.treeProvider,
     );
 
@@ -108,9 +118,20 @@ export class MainPanel {
     });
   }
 
+  /** Posts an extension message to the webview. */
+  public postMessage(message: ExtensionMessage): void {
+    void this._panel.webview.postMessage(message);
+  }
+
+  /** Refreshes board data from the extension host. */
+  public refresh(): void {
+    this._messageHandler.sendInitData();
+  }
+
   /** Releases panel resources. */
   public dispose(): void {
     MainPanel.currentPanel = undefined;
+    this._messageHandler.dispose();
     if (this._timerInterval) {
       clearInterval(this._timerInterval);
       this._timerInterval = undefined;

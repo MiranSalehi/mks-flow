@@ -4,7 +4,7 @@ interface ProjectItemProps {
   project: Project;
   active: boolean;
   onSelect: () => void;
-  onRequestDelete: () => void;
+  onRequestDelete?: () => void;
 }
 
 export function ProjectItem({
@@ -19,6 +19,9 @@ export function ProjectItem({
       className={`project-item ${active ? 'project-item--active' : ''}`}
       onClick={onSelect}
       onContextMenu={(event) => {
+        if (!onRequestDelete) {
+          return;
+        }
         event.preventDefault();
         onRequestDelete();
       }}

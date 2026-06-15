@@ -1,6 +1,6 @@
 # MKSFlow
 
-AI-native task management for developers using Cursor / VS Code.
+AI-native task management for developers — works in Cursor, VS Code, Cline, Claude Code, and Antigravity.
 
 ## Development
 

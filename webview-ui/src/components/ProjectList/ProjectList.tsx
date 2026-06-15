@@ -8,6 +8,7 @@ interface ProjectListProps {
   projects: Project[];
   selectedProjectId: string | null;
   collapsed: boolean;
+  allowManage?: boolean;
   onSelect: (projectId: string) => void;
   onCreate: () => void;
   onDelete: (projectId: string) => void;
@@ -17,6 +18,7 @@ export function ProjectList({
   projects,
   selectedProjectId,
   collapsed,
+  allowManage = true,
   onSelect,
   onCreate,
   onDelete,
@@ -25,12 +27,18 @@ export function ProjectList({
 
   if (collapsed) {
     return (
-      <div className="project-list">
-        <div className="project-list__header">
-          <Button variant="ghost" onClick={onCreate} title="New project">
+      <div className="project-list project-list--collapsed">
+        {allowManage ? (
+          <Button
+            variant="ghost"
+            className="project-list__add-rail"
+            onClick={onCreate}
+            title="New project"
+            aria-label="New project"
+          >
             +
           </Button>
-        </div>
+        ) : null}
       </div>
     );
   }
@@ -40,9 +48,11 @@ export function ProjectList({
       <div className="project-list">
         <div className="project-list__header">
           <strong>Projects</strong>
-          <Button variant="secondary" onClick={onCreate}>
-            New
-          </Button>
+          {allowManage ? (
+            <Button variant="secondary" onClick={onCreate}>
+              New
+            </Button>
+          ) : null}
         </div>
         <div className="project-list__items">
           {projects.length === 0 ? (
@@ -54,7 +64,9 @@ export function ProjectList({
                 project={project}
                 active={project.id === selectedProjectId}
                 onSelect={() => onSelect(project.id)}
-                onRequestDelete={() => setProjectToDelete(project)}
+                onRequestDelete={
+                  allowManage ? () => setProjectToDelete(project) : undefined
+                }
               />
             ))
           )}
