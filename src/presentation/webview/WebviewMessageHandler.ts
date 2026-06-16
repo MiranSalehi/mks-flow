@@ -28,6 +28,7 @@ import { serializeCloudTasksForWebview, resolveCloudAttachmentUri, clearCloudAtt
 import { assertCloudMediaSize } from '../../infrastructure/cloud/cloudMediaLimits';
 import { formatRelatedWorkspacePath } from '../../shared/workspacePaths';
 import type { LinearTeamOption } from '../../infrastructure/linear/LinearTypes';
+import { buildStateMaps } from '../../infrastructure/linear/linearMappers';
 import { dispatchTaskToAi } from '../../application/services/AITaskDispatchService';
 import type { CloudAuthState } from '../../application/services/CloudSyncService';
 import { refreshGitHubSyncStatusBar } from '../statusbar/GitHubSyncStatusBar';
@@ -269,6 +270,7 @@ export class WebviewMessageHandler {
             message.projectId,
             message.teamId,
             message.linearProjectId,
+            message.stateToStatus,
           );
           return;
         case 'LINEAR_UNLINK_PROJECT':
@@ -1067,6 +1069,7 @@ export class WebviewMessageHandler {
             linearTeamName: config.linearTeamName,
             linearProjectId: config.linearProjectId,
             linearProjectName: config.linearProjectName,
+            stateToStatus: config.stateToStatus,
             lastSyncAt: config.lastSyncAt,
           }
         : null,
@@ -1079,8 +1082,12 @@ export class WebviewMessageHandler {
       return;
     }
 
-    await linear.auth.connect(apiKey);
+    const viewer = await linear.auth.connect(apiKey);
     this.postLinearState();
+    await this.linearGetTeams();
+    void vscode.window.showInformationMessage(
+      `Connected to Linear (${viewer.organization.name})`,
+    );
   }
 
   private async linearDisconnect(): Promise<void> {
@@ -1105,15 +1112,9 @@ export class WebviewMessageHandler {
 
     const organization = await linear.auth.testConnection();
     this.postLinearState();
-    this.postMessage({
-      type: 'LINEAR_SYNC_RESULT',
-      projectId: '',
-      pulled: 0,
-      pushed: 0,
-      conflicts: 0,
-      errors: [],
-    });
-    void organization;
+    void vscode.window.showInformationMessage(
+      `Linear connection OK (${organization})`,
+    );
   }
 
   private async linearGetTeams(): Promise<void> {
@@ -1125,12 +1126,20 @@ export class WebviewMessageHandler {
     const teams = await linear.sync.getTeams();
     this.postMessage({
       type: 'LINEAR_TEAMS',
-      teams: teams.map((team: LinearTeamOption) => ({
-        id: team.id,
-        name: team.name,
-        states: team.states,
-        projects: team.projects,
-      })),
+      teams: teams.map((team: LinearTeamOption) => {
+        const maps = buildStateMaps(team.states);
+        return {
+          id: team.id,
+          name: team.name,
+          states: team.states.map((state) => ({
+            id: state.id,
+            name: state.name,
+            type: state.type,
+            mappedStatus: maps.stateToStatus[state.id] ?? 'todo',
+          })),
+          projects: team.projects,
+        };
+      }),
     });
   }
 
@@ -1138,6 +1147,7 @@ export class WebviewMessageHandler {
     projectId: string,
     teamId: string,
     linearProjectId: string | null,
+    stateToStatus?: Record<string, TaskStatus>,
   ): Promise<void> {
     const linear = getLinearContext();
     if (!linear) {
@@ -1160,6 +1170,7 @@ export class WebviewMessageHandler {
       linearProject
         ? { id: linearProject.id, name: linearProject.name }
         : null,
+      stateToStatus,
     );
 
     this.broadcastLocalUpdates();
@@ -1170,6 +1181,12 @@ export class WebviewMessageHandler {
       ...result,
     });
     this.postLinearState();
+
+    if (result.errors.length === 0) {
+      void vscode.window.showInformationMessage(
+        `Linear linked: ${result.pulled} pulled, ${result.pushed} pushed`,
+      );
+    }
   }
 
   private async linearUnlinkProject(projectId: string): Promise<void> {
@@ -1194,6 +1211,11 @@ export class WebviewMessageHandler {
       const result = await linear.sync.syncProject(projectId);
       this.broadcastLocalUpdates();
       this.postMessage({ type: 'LINEAR_SYNC_RESULT', projectId, ...result });
+      if (result.errors.length === 0) {
+        void vscode.window.showInformationMessage(
+          `Linear sync: ${result.pulled} pulled, ${result.pushed} pushed`,
+        );
+      }
     } else {
       await linear.sync.syncAllLinked();
       this.broadcastLocalUpdates();

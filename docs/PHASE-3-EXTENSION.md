@@ -2,6 +2,8 @@
 
 Two-way sync between local MKSFlow projects and Linear issues.
 
+**Status:** Implementation complete (E2E verification deferred — see `mksflow-cloud/UNTESTED-BACKLOG.md`).
+
 ## Prerequisites
 
 - Phases 1 and 2 complete

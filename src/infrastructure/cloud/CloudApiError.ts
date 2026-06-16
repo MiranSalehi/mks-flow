@@ -14,6 +14,11 @@ export class CloudApiError extends Error {
     return this.status === 401;
   }
 
+  /** Whether the token lacks permission for the requested action. */
+  isForbidden(): boolean {
+    return this.status === 403;
+  }
+
   /** Extracts a user-facing message from Laravel validation responses. */
   static fromResponse(status: number, body: unknown): CloudApiError {
     if (body && typeof body === 'object') {

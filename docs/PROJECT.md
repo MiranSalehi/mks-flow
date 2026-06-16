@@ -373,8 +373,8 @@ Every transition is logged in `task_logs` with timestamp and message.
 
 | Phase | Feature | Status |
 |---|---|---|
-| 1 | Personal Mode — local, SQLite, full board, timer, export | 🔨 Build first |
-| 2 | Team Mode — cloud API, auth, roles, owner approval | 📋 Planned |
-| 3 | Linear Integration — two-way sync | 📋 Planned |
-| 4 | GitHub Integration — Issues, Boards, PRs | 📋 Planned |
-| 5 | Notion Integration — board sync | 📋 Planned |
+| 1 | Personal Mode — local, SQLite, full board, timer, export | ✅ Done |
+| 2 | Team Mode — cloud API, auth, roles, owner approval | ✅ Done |
+| 3 | Linear Integration — two-way sync | ✅ Done (verify deferred) |
+| 4 | GitHub Integration — Issues, Boards, PRs | 🟡 Code written |
+| 5 | Notion Integration — board sync | 🟡 Code written |

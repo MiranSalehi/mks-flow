@@ -268,7 +268,7 @@ export type NotionSyncStatus = 'idle' | 'syncing' | 'error';
 export interface LinearTeamOption {
   id: string;
   name: string;
-  states: { id: string; name: string; type: string }[];
+  states: { id: string; name: string; type: string; mappedStatus?: TaskStatus }[];
   projects: { id: string; name: string }[];
 }
 
@@ -277,6 +277,8 @@ export interface LinearProjectConfig {
   linearTeamName: string;
   linearProjectId: string | null;
   linearProjectName: string | null;
+  /** Linear workflow state id → MKSFlow status. */
+  stateToStatus: Record<string, TaskStatus>;
   lastSyncAt: string | null;
 }
 
@@ -369,6 +371,7 @@ export type WebviewMessage =
       projectId: string;
       teamId: string;
       linearProjectId: string | null;
+      stateToStatus?: Record<string, TaskStatus>;
     }
   | { type: 'LINEAR_UNLINK_PROJECT'; projectId: string }
   | { type: 'LINEAR_SYNC_NOW'; projectId?: string }

@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../shared/Button';
-import type { LinearProjectConfig, LinearTeamOption } from '../../types/messages';
+import {
+  STATUSES,
+  type LinearProjectConfig,
+  type LinearTeamOption,
+  type TaskStatus,
+} from '../../types/messages';
 
 interface LinearIntegrationPanelProps {
   projectId: string;
@@ -14,10 +19,29 @@ interface LinearIntegrationPanelProps {
   onDisconnect: () => void;
   onTestConnection: () => void;
   onLoadTeams: () => void;
-  onLink: (teamId: string, linearProjectId: string | null) => void;
+  onLink: (
+    teamId: string,
+    linearProjectId: string | null,
+    stateToStatus: Record<string, TaskStatus>,
+  ) => void;
   onUnlink: () => void;
   onSyncNow: () => void;
   onClose: () => void;
+}
+
+function buildDefaultMappings(
+  team: LinearTeamOption | undefined,
+): Record<string, TaskStatus> {
+  if (!team) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    team.states.map((state) => [
+      state.id,
+      state.mappedStatus ?? 'todo',
+    ]),
+  ) as Record<string, TaskStatus>;
 }
 
 export function LinearIntegrationPanel({
@@ -31,7 +55,7 @@ export function LinearIntegrationPanel({
   onConnect,
   onDisconnect,
   onTestConnection,
-  onLoadTeams: _onLoadTeams,
+  onLoadTeams,
   onLink,
   onUnlink,
   onSyncNow,
@@ -42,14 +66,46 @@ export function LinearIntegrationPanel({
   const [linearProjectId, setLinearProjectId] = useState(
     projectConfig?.linearProjectId ?? '',
   );
+  const [stateMappings, setStateMappings] = useState<
+    Record<string, TaskStatus>
+  >({});
+
+  const selectedTeam = teams.find((team) => team.id === teamId);
+  const linked = Boolean(projectConfig);
 
   useEffect(() => {
     setTeamId(projectConfig?.linearTeamId ?? '');
     setLinearProjectId(projectConfig?.linearProjectId ?? '');
   }, [projectConfig, projectId]);
 
-  const selectedTeam = teams.find((team) => team.id === teamId);
-  const linked = Boolean(projectConfig);
+  useEffect(() => {
+    if (linked && projectConfig?.stateToStatus) {
+      setStateMappings(projectConfig.stateToStatus);
+      return;
+    }
+
+    setStateMappings(buildDefaultMappings(selectedTeam));
+  }, [linked, projectConfig?.stateToStatus, selectedTeam, teamId]);
+
+  const mappingRows = useMemo(() => {
+    if (linked && projectConfig?.stateToStatus) {
+      const team = teams.find((item) => item.id === projectConfig.linearTeamId);
+      return Object.entries(projectConfig.stateToStatus).map(
+        ([stateId, status]) => ({
+          stateId,
+          stateName:
+            team?.states.find((state) => state.id === stateId)?.name ?? stateId,
+          status,
+        }),
+      );
+    }
+
+    return (selectedTeam?.states ?? []).map((state) => ({
+      stateId: state.id,
+      stateName: state.name,
+      status: stateMappings[state.id] ?? state.mappedStatus ?? 'todo',
+    }));
+  }, [linked, projectConfig, selectedTeam, stateMappings, teams]);
 
   return (
     <div className="linear-panel">
@@ -78,11 +134,15 @@ export function LinearIntegrationPanel({
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
           />
+          <p className="linear-panel__meta">
+            Create a key at linear.app → Settings → API.
+          </p>
           <div className="linear-panel__actions">
             <Button
               onClick={() => {
                 if (apiKey.trim()) {
                   onConnect(apiKey.trim());
+                  setApiKey('');
                 }
               }}
             >
@@ -100,6 +160,9 @@ export function LinearIntegrationPanel({
               <Button variant="secondary" onClick={onTestConnection}>
                 Test connection
               </Button>
+              <Button variant="secondary" onClick={onLoadTeams}>
+                Refresh teams
+              </Button>
               <Button variant="ghost" onClick={onDisconnect}>
                 Disconnect
               </Button>
@@ -114,6 +177,7 @@ export function LinearIntegrationPanel({
               id="linear-team"
               className="linear-panel__select"
               value={teamId}
+              disabled={linked}
               onChange={(event) => {
                 setTeamId(event.target.value);
                 setLinearProjectId('');
@@ -134,8 +198,8 @@ export function LinearIntegrationPanel({
               id="linear-project"
               className="linear-panel__select"
               value={linearProjectId}
+              disabled={!teamId || linked}
               onChange={(event) => setLinearProjectId(event.target.value)}
-              disabled={!teamId}
             >
               <option value="">All team issues</option>
               {selectedTeam?.projects.map((project) => (
@@ -145,10 +209,51 @@ export function LinearIntegrationPanel({
               ))}
             </select>
 
+            {mappingRows.length > 0 ? (
+              <div className="linear-panel__mapping">
+                <h4>Status mapping</h4>
+                <p className="linear-panel__meta">
+                  Map each Linear workflow state to a board column. Adjust if
+                  your team uses custom state names.
+                </p>
+                {mappingRows.map((row) => (
+                  <label
+                    key={row.stateId}
+                    className="linear-panel__map-row"
+                    htmlFor={`linear-state-${row.stateId}`}
+                  >
+                    <span>{row.stateName}</span>
+                    <select
+                      id={`linear-state-${row.stateId}`}
+                      className="linear-panel__select"
+                      value={row.status}
+                      disabled={linked}
+                      onChange={(event) =>
+                        setStateMappings((current) => ({
+                          ...current,
+                          [row.stateId]: event.target.value as TaskStatus,
+                        }))
+                      }
+                    >
+                      {STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+
             <div className="linear-panel__actions">
               {linked ? (
                 <>
-                  <Button variant="secondary" onClick={onSyncNow} disabled={syncStatus === 'syncing'}>
+                  <Button
+                    variant="secondary"
+                    onClick={onSyncNow}
+                    disabled={syncStatus === 'syncing'}
+                  >
                     {syncStatus === 'syncing' ? 'Syncing…' : 'Sync now'}
                   </Button>
                   <Button variant="ghost" onClick={onUnlink}>
@@ -157,8 +262,10 @@ export function LinearIntegrationPanel({
                 </>
               ) : (
                 <Button
-                  onClick={() => onLink(teamId, linearProjectId || null)}
-                  disabled={!teamId}
+                  onClick={() =>
+                    onLink(teamId, linearProjectId || null, stateMappings)
+                  }
+                  disabled={!teamId || mappingRows.length === 0}
                 >
                   Link to Linear
                 </Button>
@@ -167,7 +274,8 @@ export function LinearIntegrationPanel({
 
             {projectConfig?.lastSyncAt ? (
               <p className="linear-panel__meta">
-                Last synced: {new Date(projectConfig.lastSyncAt).toLocaleString()}
+                Last synced:{' '}
+                {new Date(projectConfig.lastSyncAt).toLocaleString()}
               </p>
             ) : null}
             {linked ? (

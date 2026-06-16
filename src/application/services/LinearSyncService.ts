@@ -5,7 +5,9 @@ import type { Task } from '../../domain/models/Task';
 import { LINEAR_PROVIDER_ID } from '../../shared/linearConfig';
 import type { LinearApiClient } from '../../infrastructure/linear/LinearApiClient';
 import { LinearApiError } from '../../infrastructure/linear/LinearApiError';
+import type { TaskStatus } from '../../domain/types';
 import {
+  buildMapsFromStateToStatus,
   buildStateMaps,
   mapLinearIssueToExternal,
 } from '../../infrastructure/linear/linearMappers';
@@ -111,13 +113,16 @@ export class LinearSyncService {
       states: { id: string; name: string; type: string }[];
     },
     linearProject: { id: string; name: string } | null,
+    customStateToStatus?: Record<string, TaskStatus>,
   ): Promise<SyncResult> {
     const project = this.projectRepository.findById(projectId);
     if (!project) {
       throw new Error(`Project not found: ${projectId}`);
     }
 
-    const maps = buildStateMaps(team.states);
+    const maps = customStateToStatus
+      ? buildMapsFromStateToStatus(team.states, customStateToStatus)
+      : buildStateMaps(team.states);
     const linkage: LinearProjectConfig = {
       linearTeamId: team.id,
       linearTeamName: team.name,
@@ -217,6 +222,7 @@ export class LinearSyncService {
             description: external.description,
             status: external.status as Task['status'],
             priority: external.priority as Task['priority'],
+            tags: external.tags ?? existing.tags,
             externalUrl: external.url,
           });
           result.pulled += 1;
@@ -238,12 +244,11 @@ export class LinearSyncService {
 
         if (!task.externalId) {
           try {
-            const externalId = await this.provider.pushTask(task);
-            const match = issues.find((issue) => issue.id === externalId);
+            const created = await this.provider.pushTaskWithUrl(task);
             this.taskRepository.update(task.id, {
-              externalId,
+              externalId: created.id,
               externalProvider: LINEAR_PROVIDER_ID,
-              externalUrl: match?.url ?? `https://linear.app/issue/${externalId}`,
+              externalUrl: created.url,
             });
             result.pushed += 1;
           } catch (error) {
@@ -281,16 +286,11 @@ export class LinearSyncService {
       return;
     }
 
-    const externalId = await this.provider.pushTask(task);
-    const issues = await this.api.listIssues(
-      this.config.getConfig(task.projectId)!.linearTeamId,
-      this.config.getConfig(task.projectId)!.linearProjectId,
-    );
-    const match = issues.find((issue) => issue.id === externalId);
+    const created = await this.provider.pushTaskWithUrl(task);
     this.taskRepository.update(task.id, {
-      externalId,
+      externalId: created.id,
       externalProvider: LINEAR_PROVIDER_ID,
-      externalUrl: match?.url ?? `https://linear.app/issue/${externalId}`,
+      externalUrl: created.url,
     });
   }
 

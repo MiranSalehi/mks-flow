@@ -42,13 +42,19 @@ export class LinearSyncProvider implements ISyncProvider {
   }
 
   async pushTask(task: Task): Promise<string> {
+    const created = await this.pushTaskWithUrl(task);
+    return created.id;
+  }
+
+  /** Creates a Linear issue and returns id + canonical URL. */
+  async pushTaskWithUrl(task: Task): Promise<{ id: string; url: string }> {
     const config = this.requireConfig(task.projectId);
     const stateId = config.statusToState[task.status];
     if (!stateId) {
       throw new Error(`No Linear state mapped for status "${task.status}"`);
     }
 
-    const created = await this.api.createIssue({
+    return this.api.createIssue({
       teamId: config.linearTeamId,
       title: task.title,
       description: task.description,
@@ -56,8 +62,6 @@ export class LinearSyncProvider implements ISyncProvider {
       priority: mapTaskPriorityToLinear(task.priority),
       projectId: config.linearProjectId,
     });
-
-    return created.id;
   }
 
   async updateTask(task: Task): Promise<void> {

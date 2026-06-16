@@ -165,6 +165,16 @@ export class CloudSyncService {
         return;
       }
 
+      if (error instanceof CloudApiError && error.isForbidden()) {
+        this.setSyncStatus({
+          status: 'error',
+          message:
+            error.message ||
+            'This API token does not have permission for that action.',
+        });
+        throw error;
+      }
+
       const isOffline =
         error instanceof CloudApiError && error.status === 0;
 
