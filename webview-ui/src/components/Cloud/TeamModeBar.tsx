@@ -12,6 +12,7 @@ interface TeamModeBarProps {
   onSetMode: (mode: BoardMode) => void;
   onSyncNow: () => void;
   onLogout: () => void;
+  onOpenWebApp?: () => void;
 }
 
 function formatSyncLabel(
@@ -45,6 +46,7 @@ export function TeamModeBar({
   onSetMode,
   onSyncNow,
   onLogout,
+  onOpenWebApp,
 }: TeamModeBarProps) {
   return (
     <div className="team-mode-bar">
@@ -79,6 +81,11 @@ export function TeamModeBar({
           </span>
           {cloudAuthenticated ? (
             <>
+              {onOpenWebApp ? (
+                <Button variant="ghost" onClick={onOpenWebApp}>
+                  Open web
+                </Button>
+              ) : null}
               <Button variant="secondary" onClick={onSyncNow}>
                 Sync now
               </Button>

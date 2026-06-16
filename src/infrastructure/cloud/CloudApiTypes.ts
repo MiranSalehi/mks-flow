@@ -43,6 +43,10 @@ export interface ApiTask {
   sort_order: number;
   external_id: string | null;
   external_source: string | null;
+  pull_request_url?: string | null;
+  agent_workflow_status?: string | null;
+  current_iteration?: number | null;
+  accepted_iteration?: number | null;
   attachments?: ApiTaskAttachment[];
   created_at: string;
   updated_at: string;

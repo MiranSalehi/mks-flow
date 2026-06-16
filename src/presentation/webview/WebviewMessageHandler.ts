@@ -16,6 +16,7 @@ import {
 } from '../../infrastructure/cloud/cloudMappers';
 import { RepositoryError } from '../../infrastructure/repositories/RepositoryError';
 import type { BoardMode } from '../../shared/cloudConfig';
+import { buildCloudTaskUrl, getWebAppUrl } from '../../shared/cloudUrls';
 import {
   serializeProject,
   serializeTaskLog,
@@ -149,6 +150,12 @@ export class WebviewMessageHandler {
           return;
         case 'CLOUD_SYNC_NOW':
           await this.cloudSyncNow();
+          return;
+        case 'OPEN_CLOUD_TASK':
+          await this.openCloudTask(message.projectId, message.taskId);
+          return;
+        case 'OPEN_CLOUD_WEB_APP':
+          await this.openCloudWebApp();
           return;
         case 'CREATE_PROJECT':
           this.assertPersonalMode();
@@ -427,6 +434,15 @@ export class WebviewMessageHandler {
     if (this.isTeamMode()) {
       await this.broadcastCloudUpdates();
     }
+  }
+
+  private async openCloudTask(projectId: string, taskId: string): Promise<void> {
+    const url = buildCloudTaskUrl(projectId, taskId);
+    await vscode.env.openExternal(vscode.Uri.parse(url));
+  }
+
+  private async openCloudWebApp(): Promise<void> {
+    await vscode.env.openExternal(vscode.Uri.parse(getWebAppUrl()));
   }
 
   private createProject(

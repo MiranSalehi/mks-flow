@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../types/messages';
@@ -17,6 +18,7 @@ interface TaskCardProps {
   onRevertToDoing: () => void;
   onSendToAi: () => void;
   onDelete: () => void;
+  onOpenInCloud?: () => void;
   allowDelete?: boolean;
 }
 
@@ -31,24 +33,67 @@ export function TaskCard({
   onRevertToDoing,
   onSendToAi,
   onDelete,
+  onOpenInCloud,
   allowDelete = true,
 }: TaskCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const menuBtnRef = useRef<HTMLDivElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: task.id,
       disabled: task.status === 'done',
     });
 
+  useLayoutEffect(() => {
+    if (!menuOpen || !menuBtnRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const anchor = menuBtnRef.current;
+      if (!anchor) {
+        return;
+      }
+
+      const rect = anchor.getBoundingClientRect();
+      const menuHeight = menuPortalRef.current?.offsetHeight ?? 168;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < menuHeight + 8 && rect.top > spaceBelow;
+
+      setMenuStyle({
+        top: openUp ? rect.top - 4 : rect.bottom + 4,
+        left: rect.right,
+        transform: openUp ? 'translate(-100%, -100%)' : 'translateX(-100%)',
+      });
+    };
+
+    updatePosition();
+    const frame = requestAnimationFrame(updatePosition);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [menuOpen, allowDelete, onOpenInCloud]);
+
   useEffect(() => {
     if (!menuOpen) {
       return;
     }
     const close = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+      const target = event.target as Node;
+      if (
+        menuBtnRef.current?.contains(target) ||
+        menuPortalRef.current?.contains(target)
+      ) {
+        return;
       }
+      setMenuOpen(false);
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
@@ -82,7 +127,7 @@ export function TaskCard({
         <h4 className="task-card__title" onDoubleClick={onOpen}>
           {task.title}
         </h4>
-        <div className="task-card__menu-wrap" ref={menuRef}>
+        <div className="task-card__menu-wrap" ref={menuBtnRef}>
           <Button
             variant="ghost"
             className="task-card__menu-btn"
@@ -92,27 +137,63 @@ export function TaskCard({
             }}
             onPointerDown={(event) => event.stopPropagation()}
             aria-label="More actions"
+            aria-expanded={menuOpen}
           >
             ⋯
           </Button>
-          {menuOpen ? (
-            <div
-              className="task-card__menu"
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <button type="button" onClick={onOpen}>
-                Edit
-              </button>
-              <button type="button" onClick={onSendToAi}>
-                Send to AI
-              </button>
-              {allowDelete ? (
-                <button type="button" className="task-card__menu-danger" onClick={onDelete}>
-                  Delete
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          {menuOpen
+            ? createPortal(
+                <div
+                  ref={menuPortalRef}
+                  className="task-card__menu task-card__menu--portal"
+                  style={menuStyle}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpen();
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onSendToAi();
+                    }}
+                  >
+                    Send to AI
+                  </button>
+                  {onOpenInCloud ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onOpenInCloud();
+                      }}
+                    >
+                      Open in cloud
+                    </button>
+                  ) : null}
+                  {allowDelete ? (
+                    <button
+                      type="button"
+                      className="task-card__menu-danger"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDelete();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>,
+                document.body,
+              )
+            : null}
         </div>
       </div>
 
@@ -125,6 +206,23 @@ export function TaskCard({
         ))}
         {task.status === 'doing' && elapsed !== undefined ? (
           <span className="chip chip--timer">▶ {formatElapsed(elapsed)}</span>
+        ) : null}
+        {task.source === 'cloud' && task.agentWorkflowStatus === 'waiting_for_user' ? (
+          <span className="chip chip--cloud-review" title="Agent review pending in cloud">
+            Review
+          </span>
+        ) : null}
+        {task.pullRequestUrl ? (
+          <a
+            className="link-button"
+            href={task.pullRequestUrl}
+            target="_blank"
+            rel="noreferrer"
+            title="Open pull request"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            PR
+          </a>
         ) : null}
         {task.externalProvider === 'github' ? (
           <span className="chip chip--github" title="Synced with GitHub">

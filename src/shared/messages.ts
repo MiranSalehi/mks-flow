@@ -62,6 +62,10 @@ export interface SerializedTask {
   assignedTo: string | null;
   createdBy: string | null;
   teamId: string | null;
+  pullRequestUrl?: string | null;
+  agentWorkflowStatus?: string | null;
+  currentIteration?: number | null;
+  acceptedIteration?: number | null;
 }
 
 /** JSON-safe task log payload for webview messaging. */
@@ -318,6 +322,8 @@ export type WebviewMessage =
   | { type: 'CLOUD_LOGIN'; email: string; password: string }
   | { type: 'CLOUD_LOGOUT' }
   | { type: 'CLOUD_SYNC_NOW' }
+  | { type: 'OPEN_CLOUD_TASK'; projectId: string; taskId: string }
+  | { type: 'OPEN_CLOUD_WEB_APP' }
   | {
       type: 'RESOLVE_CLOUD_ATTACHMENT';
       taskId: string;
