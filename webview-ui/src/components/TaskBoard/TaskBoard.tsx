@@ -39,6 +39,7 @@ interface TaskBoardProps {
   onRevertToDoing: (taskId: string) => void;
   onSendToAi: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onOpenInCloud?: (projectId: string, taskId: string) => void;
 }
 
 const dropAnimation: DropAnimation = {
@@ -68,6 +69,7 @@ export function TaskBoard({
   onRevertToDoing,
   onSendToAi,
   onDeleteTask,
+  onOpenInCloud,
 }: TaskBoardProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -199,6 +201,7 @@ export function TaskBoard({
             onRevertToDoing={onRevertToDoing}
             onSendToAi={onSendToAi}
             onDeleteTask={onDeleteTask}
+            onOpenInCloud={onOpenInCloud}
           />
         ))}
       </div>

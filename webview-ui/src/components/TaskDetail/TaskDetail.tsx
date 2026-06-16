@@ -5,6 +5,7 @@ import { useDebouncedSave } from '../../hooks/useDebouncedSave';
 import { formatElapsed } from '../../hooks/useVSCode';
 import { Button } from '../shared/Button';
 import { TaskDescriptionField, type TaskDescriptionFieldHandle } from './TaskDescriptionField';
+import { CloudTaskPanel } from '../Cloud/CloudTaskPanel';
 
 interface TaskDetailProps {
   task: Task;
@@ -16,6 +17,7 @@ interface TaskDetailProps {
   onSave: (data: Partial<Task>) => void;
   onDelete: () => void;
   onSendToAi: () => void;
+  onOpenInCloud?: () => void;
   onStartTimer: () => void;
   onStopTimer: () => void;
   onLoadLogs: () => void;
@@ -33,6 +35,7 @@ export function TaskDetail({
   onSave,
   onDelete,
   onSendToAi,
+  onOpenInCloud,
   onStartTimer,
   onStopTimer,
   onLoadLogs,
@@ -171,6 +174,14 @@ export function TaskDetail({
           </Button>
         </div>
       </header>
+      {isCloud && onOpenInCloud ? (
+        <CloudTaskPanel
+          pullRequestUrl={task.pullRequestUrl}
+          agentWorkflowStatus={task.agentWorkflowStatus}
+          currentIteration={task.currentIteration}
+          onOpenInCloud={onOpenInCloud}
+        />
+      ) : null}
       <div className="task-detail__body">
         <div className="task-detail__section field-group">
           <label className="field-label" htmlFor="task-title">

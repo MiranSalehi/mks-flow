@@ -301,6 +301,7 @@ export function Layout() {
           onSetMode={handleSetBoardMode}
           onSyncNow={() => postMessage({ type: 'CLOUD_SYNC_NOW' })}
           onLogout={() => postMessage({ type: 'CLOUD_LOGOUT' })}
+          onOpenWebApp={() => postMessage({ type: 'OPEN_CLOUD_WEB_APP' })}
         />
 
         <header className="layout__header layout__header--sticky">
@@ -426,6 +427,16 @@ export function Layout() {
               onDeleteTask={(taskId) =>
                 postMessage({ type: 'DELETE_TASK', taskId })
               }
+              onOpenInCloud={
+                isTeamMode
+                  ? (projectId, taskId) =>
+                      postMessage({
+                        type: 'OPEN_CLOUD_TASK',
+                        projectId,
+                        taskId,
+                      })
+                  : undefined
+              }
             />
           )}
         </div>
@@ -456,6 +467,16 @@ export function Layout() {
           onPickFiles={() => postMessage({ type: 'PICK_WORKSPACE_FILES' })}
           onSendToAi={() =>
             postMessage({ type: 'SEND_TO_AI', taskId: selectedTask.id })
+          }
+          onOpenInCloud={
+            selectedTask.source === 'cloud'
+              ? () =>
+                  postMessage({
+                    type: 'OPEN_CLOUD_TASK',
+                    projectId: selectedTask.projectId,
+                    taskId: selectedTask.id,
+                  })
+              : undefined
           }
         />
       ) : null}

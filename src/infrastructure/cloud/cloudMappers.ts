@@ -75,6 +75,10 @@ export function mapApiTask(
     assignedTo: api.assigned_to,
     createdBy: api.created_by,
     teamId,
+    pullRequestUrl: api.pull_request_url ?? null,
+    agentWorkflowStatus: api.agent_workflow_status ?? null,
+    currentIteration: api.current_iteration ?? null,
+    acceptedIteration: api.accepted_iteration ?? null,
   };
 }
 

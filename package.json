@@ -257,6 +257,11 @@
           "default": "https://mksflow.com/api/v1",
           "description": "MKSFlow Cloud API base URL."
         },
+        "mksflow.webAppUrl": {
+          "type": "string",
+          "default": "",
+          "description": "MKSFlow Cloud web app URL (e.g. http://localhost:8000). Leave empty to derive from apiBaseUrl."
+        },
         "mksflow.cloudSyncIntervalMs": {
           "type": "number",
           "default": 30000,

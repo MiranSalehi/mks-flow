@@ -16,6 +16,7 @@ Team mode      →  https://mksflow.com/api/v1  (Bearer Sanctum token)
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `mksflow.apiBaseUrl` | `https://mksflow.com/api/v1` | Cloud API base URL |
+| `mksflow.webAppUrl` | *(empty)* | Web app origin; derived from apiBaseUrl when empty |
 | `mksflow.cloudSyncIntervalMs` | `30000` | Polling interval (min 10000) |
 
 For local development against `mksflow-cloud`:
@@ -37,6 +38,15 @@ For local development against `mksflow-cloud`:
 7. **Send to AI** works on cloud tasks (context lists cloud attachment names/ids)
 
 Team mode does **not** allow creating/deleting projects or tasks, or local timers — manage those on the web app.
+
+## AI split: extension vs cloud
+
+| Action | Where |
+|--------|--------|
+| **Send to AI** (local Cursor/Cline chat) | Extension — always |
+| **Cloud agent** (branch, diff review, PR) | Web app only — use **Open in cloud** |
+
+The extension does **not** dispatch Cursor Cloud agents. Team tasks show agent workflow status from the API; open the task in the browser to review diffs or create a PR.
 
 ## Local end-to-end test
 
@@ -78,6 +88,8 @@ Press **F5** (Extension Development Host).
 | bob: test → done | Error (member cannot approve) |
 | Login as `alice@mksflow.test` | Owner can approve test → done |
 | Send to AI on cloud task with media | Prompt lists attachment names |
+| Open in cloud (task menu / detail) | Browser opens `/projects/{id}?task={id}` |
+| Agent review badge | Shows when cloud task is `waiting_for_user` |
 | Stop `php artisan serve` | Offline badge, cached tasks remain |
 | Sync now (when API back) | Data refreshes |
 
@@ -85,6 +97,7 @@ Press **F5** (Extension Development Host).
 
 | Path | Role |
 |------|------|
+| `src/shared/cloudUrls.ts` | Web app deep links (`?task=`) |
 | `src/infrastructure/cloud/CloudApiClient.ts` | HTTP client (incl. attachments) |
 | `src/infrastructure/cloud/cloudMappers.ts` | API → webview DTOs |
 | `src/infrastructure/cloud/cloudAttachmentUtils.ts` | Attachment markdown parse/merge |
@@ -94,7 +107,7 @@ Press **F5** (Extension Development Host).
 | `src/application/services/CloudTaskService.ts` | Status, update, attach, delete media |
 | `src/presentation/webview/WebviewMessageHandler.ts` | Mode routing |
 | `src/presentation/webview/cloudTaskSerialization.ts` | Attachment fetch + cache |
-| `webview-ui/src/components/Cloud/` | Login + mode bar UI |
+| `webview-ui/src/components/Cloud/` | Login, mode bar, cloud task panel |
 | `webview-ui/src/components/Layout/BoardModeLoadingOverlay.tsx` | Tab switch loading |
 
 ## API endpoints used

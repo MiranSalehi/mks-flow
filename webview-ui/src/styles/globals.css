@@ -866,19 +866,20 @@ button {
 }
 
 .task-card__menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 120px;
-  margin-top: 4px;
+  min-width: 140px;
   padding: 4px;
   border: 1px solid var(--vscode-input-border);
   border-radius: var(--mks-radius-sm);
   background: var(--vscode-editor-background);
   box-shadow: var(--mks-shadow-2);
+}
+
+.task-card__menu--portal {
+  position: fixed;
+  z-index: 10000;
+  margin-top: 0;
 }
 
 .task-card__menu button {
@@ -1840,6 +1841,69 @@ button {
 
 .team-mode-bar__status--error {
   color: var(--vscode-errorForeground);
+}
+
+.cloud-task-panel {
+  margin: 0;
+  padding: var(--mks-space-3) var(--mks-space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--vscode-input-border) 55%, transparent);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground) 8%, transparent);
+}
+
+.cloud-task-panel__lead {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cloud-task-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cloud-task-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vscode-textLink-foreground);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground) 14%, transparent);
+}
+
+.cloud-task-panel__badge--muted {
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 12%, transparent);
+}
+
+.cloud-task-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cloud-task-panel__link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+
+.cloud-task-panel__link:hover {
+  text-decoration: underline;
+}
+
+.chip--cloud-review {
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
 }
 
 .cloud-login {

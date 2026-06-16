@@ -24,6 +24,7 @@ interface TaskColumnProps {
   onRevertToDoing: (taskId: string) => void;
   onSendToAi: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onOpenInCloud?: (projectId: string, taskId: string) => void;
 }
 
 export function TaskColumn({
@@ -41,6 +42,7 @@ export function TaskColumn({
   onRevertToDoing,
   onSendToAi,
   onDeleteTask,
+  onOpenInCloud,
 }: TaskColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const displayTitle = title || STATUS_LABELS[status];
@@ -99,6 +101,11 @@ export function TaskColumn({
                   onRevertToDoing={() => onRevertToDoing(task.id)}
                   onSendToAi={() => onSendToAi(task.id)}
                   onDelete={() => onDeleteTask(task.id)}
+                  onOpenInCloud={
+                    onOpenInCloud
+                      ? () => onOpenInCloud(task.projectId, task.id)
+                      : undefined
+                  }
                   allowDelete={!readOnly}
                 />
               ))}
