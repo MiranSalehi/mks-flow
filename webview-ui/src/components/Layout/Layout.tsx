@@ -550,12 +550,13 @@ export function Layout() {
               postMessage({ type: 'LINEAR_TEST_CONNECTION' })
             }
             onLoadTeams={() => postMessage({ type: 'LINEAR_GET_TEAMS' })}
-            onLink={(teamId, linearProjectId) =>
+            onLink={(teamId, linearProjectId, stateToStatus) =>
               postMessage({
                 type: 'LINEAR_LINK_PROJECT',
                 projectId: selectedProject.id,
                 teamId,
                 linearProjectId,
+                stateToStatus,
               })
             }
             onUnlink={() =>

@@ -59,7 +59,7 @@ export interface SyncResult {
 export interface LinearTeamOption {
   id: string;
   name: string;
-  states: LinearWorkflowState[];
+  states: (LinearWorkflowState & { mappedStatus?: TaskStatus })[];
   projects: LinearProject[];
 }
 

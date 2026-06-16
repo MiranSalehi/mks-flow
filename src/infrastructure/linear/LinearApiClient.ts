@@ -71,15 +71,13 @@ export class LinearApiClient {
     let after: string | null = null;
     let hasNextPage = true;
 
-    while (hasNextPage) {
-      const cursor: string | null = after;
-      const page: IssuesPage = await this.query<IssuesPage>(
-        `
-        query Issues($teamId: ID!, $projectId: ID, $after: String) {
+    const query = linearProjectId
+      ? `
+        query Issues($teamId: ID!, $projectId: ID!, $after: String) {
           issues(
             filter: {
               team: { id: { eq: $teamId } }
-              ${linearProjectId ? 'project: { id: { eq: $projectId } }' : ''}
+              project: { id: { eq: $projectId } }
             }
             after: $after
             first: 50
@@ -98,13 +96,40 @@ export class LinearApiClient {
             pageInfo { hasNextPage endCursor }
           }
         }
-      `,
-        {
-          teamId,
-          projectId: linearProjectId,
-          after: cursor,
-        },
-      );
+      `
+      : `
+        query Issues($teamId: ID!, $after: String) {
+          issues(
+            filter: { team: { id: { eq: $teamId } } }
+            after: $after
+            first: 50
+          ) {
+            nodes {
+              id
+              title
+              description
+              state { id name }
+              priority
+              url
+              labels { nodes { name } }
+              updatedAt
+              project { id }
+            }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+      `;
+
+    while (hasNextPage) {
+      const variables: Record<string, unknown> = {
+        teamId,
+        after,
+      };
+      if (linearProjectId) {
+        variables.projectId = linearProjectId;
+      }
+
+      const page: IssuesPage = await this.query<IssuesPage>(query, variables);
 
       issues.push(...page.issues.nodes);
       hasNextPage = page.issues.pageInfo.hasNextPage;
@@ -159,6 +184,7 @@ export class LinearApiClient {
       mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) {
         issueUpdate(id: $id, input: $input) {
           success
+          issue { id url }
         }
       }
     `,

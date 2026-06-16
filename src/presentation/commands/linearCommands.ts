@@ -3,6 +3,7 @@ import { getLinearContext } from '../../application/linearContextHolder';
 import { LinearApiError } from '../../infrastructure/linear/LinearApiError';
 import { MainPanel } from '../webview/panels/MainPanel';
 import type { TaskTreeProvider } from '../treeview/TaskTreeProvider';
+import { refreshLinearSyncStatusBar } from '../statusbar/LinearSyncStatusBar';
 import { runCommand } from './commandHelpers';
 
 /**
@@ -28,9 +29,34 @@ export function registerLinearCommands(
           throw new Error('Linear integration is not available');
         }
 
-        await linear.sync.syncAllLinked();
+        const linked = linear.config.getLinkedProjectIds();
+        let pulled = 0;
+        let pushed = 0;
+        let conflicts = 0;
+        const errors: string[] = [];
+
+        for (const projectId of linked) {
+          const result = await linear.sync.syncProject(projectId);
+          pulled += result.pulled;
+          pushed += result.pushed;
+          conflicts += result.conflicts;
+          errors.push(...result.errors);
+        }
+
         MainPanel.currentPanel?.refresh();
-        vscode.window.showInformationMessage('Linear sync complete');
+        refreshLinearSyncStatusBar();
+
+        if (errors.length > 0) {
+          throw new LinearApiError(errors.join('; '));
+        }
+
+        vscode.window.showInformationMessage(
+          linked.length === 0
+            ? 'No projects linked to Linear'
+            : `Linear sync: ${pulled} pulled, ${pushed} pushed${
+                conflicts > 0 ? `, ${conflicts} conflicts` : ''
+              }`,
+        );
       }),
     ),
     vscode.commands.registerCommand('mksflow.disconnectLinear', () =>
