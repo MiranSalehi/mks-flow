@@ -24,6 +24,7 @@
     "watch": "webpack --mode development --watch",
     "compile": "webpack --mode development",
     "rebuild:electron": "node scripts/rebuild-sqlite.js --force",
+    "rebuild:electron:detect": "node scripts/detect-electron.js",
     "ensure:electron": "node scripts/rebuild-sqlite.js",
     "postinstall": "node scripts/rebuild-sqlite.js --force"
   },

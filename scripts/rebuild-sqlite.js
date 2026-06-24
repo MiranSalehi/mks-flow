@@ -50,8 +50,13 @@ function rebuild(force = false) {
     `Rebuilding better-sqlite3 for Electron ${electronVersion} (ABI ${expectedAbi})...`,
   );
 
+  const headerUrl =
+    process.env.ELECTRON_HEADERS_MIRROR ??
+    process.env.MKSFLOW_ELECTRON_HEADERS_MIRROR ??
+    'https://npmmirror.com/mirrors/electron';
+
   execSync(
-    `npx electron-rebuild --force --build-from-source --only better-sqlite3 --version ${electronVersion}`,
+    `npx electron-rebuild --force --build-from-source --only better-sqlite3 --version ${electronVersion} --dist-url ${headerUrl}`,
     { stdio: 'inherit', cwd: projectRoot },
   );
 
@@ -68,6 +73,10 @@ function rebuild(force = false) {
 }
 
 const force = process.argv.includes('--force');
+const abiArg = process.argv.find((arg) => arg.startsWith('--abi='));
+if (abiArg && !process.env.MKSFLOW_TARGET_ABI) {
+  process.env.MKSFLOW_TARGET_ABI = abiArg.split('=')[1];
+}
 
 try {
   rebuild(force);
