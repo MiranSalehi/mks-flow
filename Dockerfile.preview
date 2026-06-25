@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+
+# Build the React/Vite webview UI (Kanban board shell served in browser preview).
+FROM node:20-bookworm-slim AS builder
+
+WORKDIR /app
+
+COPY webview-ui/package.json webview-ui/package-lock.json ./webview-ui/
+
+RUN npm ci --prefix webview-ui
+
+COPY webview-ui ./webview-ui
+
+RUN npm run build --prefix webview-ui
+
+# Minimal static file server on port 8080 (non-root).
+FROM node:20-bookworm-slim AS runner
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY deploy/preview/preview-server.mjs ./preview-server.mjs
+COPY --from=builder /app/dist/webview ./public
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+RUN chown -R node:node /app
+
+USER node
+
+EXPOSE 8080
+
+CMD ["node", "preview-server.mjs"]
