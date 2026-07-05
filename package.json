@@ -2,9 +2,10 @@
   "name": "mksflow",
   "displayName": "MKSFlow",
   "description": "AI-native task management for developers — Cursor, VS Code, Cline, Claude Code, Antigravity",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "MiranSalehi",
   "license": "MIT",
+  "icon": "media/icon.png",
   "engines": {
     "node": ">=20 <25",
     "vscode": "^1.85.0"
@@ -38,7 +39,7 @@
         {
           "id": "mksflow",
           "title": "MKSFlow",
-          "icon": "media/icon.svg"
+          "icon": "media/icon.png"
         }
       ]
     },
