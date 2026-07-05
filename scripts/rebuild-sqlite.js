@@ -50,13 +50,13 @@ function rebuild(force = false) {
     `Rebuilding better-sqlite3 for Electron ${electronVersion} (ABI ${expectedAbi})...`,
   );
 
-  const headerUrl =
+  const headerMirror =
     process.env.ELECTRON_HEADERS_MIRROR ??
-    process.env.MKSFLOW_ELECTRON_HEADERS_MIRROR ??
-    'https://npmmirror.com/mirrors/electron';
+    process.env.MKSFLOW_ELECTRON_HEADERS_MIRROR;
+  const distUrlArg = headerMirror ? `--dist-url ${headerMirror}` : '';
 
   execSync(
-    `npx electron-rebuild --force --build-from-source --only better-sqlite3 --version ${electronVersion} --dist-url ${headerUrl}`,
+    `npx electron-rebuild --force --build-from-source --only better-sqlite3 --version ${electronVersion}${distUrlArg ? ` ${distUrlArg}` : ''}`,
     { stdio: 'inherit', cwd: projectRoot },
   );
 
