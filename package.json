@@ -3,7 +3,7 @@
   "displayName": "MKSFlow",
   "description": "AI-native task management for developers — Cursor, VS Code, Cline, Claude Code, Antigravity",
   "version": "0.1.0",
-  "publisher": "mksflow",
+  "publisher": "MiranSalehi",
   "license": "MIT",
   "engines": {
     "node": ">=20 <25",
@@ -15,6 +15,10 @@
   "activationEvents": [
     "onStartupFinished"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MiranSalehi/mks-flow"
+  },
   "main": "./dist/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run build",
