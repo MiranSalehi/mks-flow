@@ -7,5 +7,10 @@ webview-ui/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
-node_modules/**
 docs/**
+deploy/**
+deploy/**
+Dockerfile.preview
+docker-compose.preview.yml
+.env.preview.example
+.dockerignore

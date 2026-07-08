@@ -51,6 +51,7 @@ export function mapApiProject(api: ApiProject): SerializedProject {
 export function mapApiTask(
   api: ApiTask,
   teamId: string | null,
+  canApproveTestToDone = false,
 ): SerializedTask {
   return {
     id: api.id,
@@ -79,6 +80,7 @@ export function mapApiTask(
     agentWorkflowStatus: api.agent_workflow_status ?? null,
     currentIteration: api.current_iteration ?? null,
     acceptedIteration: api.accepted_iteration ?? null,
+    canApproveTestToDone,
   };
 }
 

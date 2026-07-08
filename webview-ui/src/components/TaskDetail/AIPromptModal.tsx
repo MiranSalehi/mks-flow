@@ -27,7 +27,7 @@ export function AIPromptModal({
   const [showFullContext, setShowFullContext] = useState(false);
 
   const hostLabel = context.providerName ?? 'AI chat';
-  const attached = context.attachedToChat ?? true;
+  const attached = context.attachedToChat === true;
 
   const copyReference = async () => {
     try {

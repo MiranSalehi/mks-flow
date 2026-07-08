@@ -2,10 +2,14 @@
   "name": "mksflow",
   "displayName": "MKSFlow",
   "description": "AI-native task management for developers — Cursor, VS Code, Cline, Claude Code, Antigravity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "MiranSalehi",
   "license": "MIT",
   "icon": "media/icon.png",
+  "homepage": "https://mksflow.com",
+  "bugs": {
+    "url": "https://github.com/MiranSalehi/mksflow-issues/issues"
+  },
   "engines": {
     "node": ">=20 <25",
     "vscode": "^1.85.0"
@@ -22,8 +26,9 @@
   },
   "main": "./dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "npm run build && node scripts/rebuild-sqlite.js --force",
     "build": "npm run build:extension && npm run build:webview",
+    "package:vsix": "npx @vscode/vsce package",
     "build:extension": "webpack --mode production",
     "build:webview": "npm run build --prefix webview-ui",
     "watch": "webpack --mode development --watch",

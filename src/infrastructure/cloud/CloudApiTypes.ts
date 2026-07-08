@@ -69,6 +69,12 @@ export interface ApiTaskLog {
   created_at: string;
 }
 
+export interface ApiTeamMember {
+  user: ApiUser;
+  role: string;
+  joined_at: string;
+}
+
 export interface CloudCachePayload {
   user: ApiUser | null;
   projects: import('../../shared/messages').SerializedProject[];

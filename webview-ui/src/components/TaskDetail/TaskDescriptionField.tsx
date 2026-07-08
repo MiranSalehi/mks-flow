@@ -29,6 +29,7 @@ interface TaskDescriptionFieldProps {
   images: TaskDescriptionImage[];
   mediaUploadEnabled?: boolean;
   mediaRemoveEnabled?: boolean;
+  readOnly?: boolean;
   onDescriptionChange: (value: string) => void;
 }
 
@@ -42,6 +43,7 @@ export const TaskDescriptionField = forwardRef<
     images,
     mediaUploadEnabled = true,
     mediaRemoveEnabled = true,
+    readOnly = false,
     onDescriptionChange,
   },
   ref,
@@ -234,6 +236,7 @@ export const TaskDescriptionField = forwardRef<
         taskId={taskId}
         value={description}
         placeholder="Describe the task…"
+        readOnly={readOnly}
         onChange={onDescriptionChange}
         onMediaPaste={mediaUploadEnabled ? handleMediaPaste : undefined}
       />

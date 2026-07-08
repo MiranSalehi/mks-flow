@@ -53,6 +53,7 @@ import { LinearApiClient } from './infrastructure/linear/LinearApiClient';
 import { ensureMksflowGitignore } from './shared/mksflowGitignore';
 
 let databaseManager: DatabaseManager | undefined;
+let activationErrorMessage: string | undefined;
 
 /**
  * Resolves the root directory used for the SQLite database file.
@@ -70,6 +71,24 @@ function resolveStoragePath(context: vscode.ExtensionContext): string {
  * Activates the MKSFlow extension.
  */
 export function activate(context: vscode.ExtensionContext): void {
+  const openBoardCommand = vscode.commands.registerCommand(
+    'mksflow.openBoard',
+    () => {
+      if (!databaseManager) {
+        void vscode.window.showErrorMessage(
+          activationErrorMessage ??
+            'MKSFlow could not start. Reinstall the extension or check Output → MKSFlow.',
+        );
+        return;
+      }
+      MainPanel.createOrShow(context);
+    },
+  );
+  context.subscriptions.push(openBoardCommand);
+
+  const treeProvider = registerTaskTreeView(context);
+  MainPanel.setTreeProvider(treeProvider);
+
   try {
     const storagePath = resolveStoragePath(context);
     const migrationsDir = path.join(
@@ -89,6 +108,7 @@ export function activate(context: vscode.ExtensionContext): void {
         : formatActivationError(error);
 
     console.error('[MKSFlow] Database initialization failed:', error);
+    activationErrorMessage = message;
     void vscode.window.showErrorMessage(message);
     return;
   }
@@ -164,8 +184,6 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   void notionSync.initialize();
 
-  const treeProvider = registerTaskTreeView(context);
-  MainPanel.setTreeProvider(treeProvider);
   MainPanel.setCloudContext({
     api: cloudApi,
     auth: cloudAuth,
@@ -178,12 +196,6 @@ export function activate(context: vscode.ExtensionContext): void {
   LinearSyncStatusBar.register(context);
   GitHubSyncStatusBar.register(context);
   NotionSyncStatusBar.register(context);
-
-  const openBoard = vscode.commands.registerCommand('mksflow.openBoard', () => {
-    MainPanel.createOrShow(context);
-  });
-
-  context.subscriptions.push(openBoard);
 }
 
 function formatActivationError(error: unknown): string {

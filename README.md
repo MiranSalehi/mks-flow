@@ -4,56 +4,15 @@
   <img src="media/icon.png" alt="MKSFlow" width="128" height="128" />
 </p>
 
-**Ship tasks from your editor** — with cloud AI agents, team approvals, and one-click **Send to AI** in Cursor, VS Code, Cline, Claude Code, and Antigravity.
+**AI-native task management in your editor** — Kanban board, Quick Capture, offline Personal mode, integrations, and **Send to AI** for Cursor, VS Code, Cline, Claude Code, and Antigravity.
 
-This repo is the **MKSFlow extension**. The hosted platform lives at **[mksflow.com](https://mksflow.com/)** — web app, REST API, Cursor Cloud agents, PR previews, and Team mode. Same Kanban pipeline everywhere: **To Do → Doing → Test → Done**.
-
----
-
-## Two surfaces, one pipeline
-
-| | **Extension (IDE)** | **MKSFlow Cloud** |
-|---|---|---|
-| **Best for** | Capture, board, timer, local work | Agents, team sync, approvals, previews |
-| **Data** | SQLite — offline-first (Personal) | Cloud sync via API token (Team) |
-| **AI in the IDE** | **Send to AI** — writes `mksflow-tasks/:id.md`, opens your chat host | — |
-| **AI in the cloud** | — | **Cursor Cloud agents** — dispatch, diffs, accept/reject, open PR |
-| **Collaboration** | Linear / GitHub / Notion sync (Personal projects) | Shared boards, comments, attachments, email alerts |
-
-**Personal mode** — no account required; tasks stay on your machine.  
-**Team mode** — sign in from the extension; poll and sync with [mksflow.com](https://mksflow.com/). Only project/team owners approve **Test → Done**.
+Pairs with **[mksflow.com](https://mksflow.com/)** for Team sync, cloud agents, and PR previews. Same pipeline: **To Do → Doing → Test → Done**.
 
 ---
 
-## Workflow
+## In the extension
 
-The same four stages on the extension board and the cloud board. Every transition is logged.
-
-| Stage | Extension | Cloud (Team + agents) |
-|-------|-----------|------------------------|
-| **To Do** | Quick Capture `⌘⇧T` / `Ctrl+Shift+T`, search, create on board | Capture on web; assign to teammates |
-| **Doing** | Timer, related git files, **Send to AI** | Run **Cursor Cloud agents** on linked GitHub repos; live progress in task chat |
-| **Test** | Drag for review | Review agent diffs; accept/reject iterations; **PR preview** URL when checks pass; owner email alerts |
-| **Done** | Export, archive | **Shipped & locked** — no edits or new agent runs; history stays for audit |
-
-### What the cloud adds (beyond sync)
-
-When you use Team mode or work on [mksflow.com](https://mksflow.com/), the platform handles what’s hard to do inside an editor alone:
-
-- **Agent Cloud** — link GitHub + Cursor in your profile; prompt agents from the task panel; threaded chat with markdown, unified diffs, accept/reject gates, stop/revert, and one-click pull requests
-- **PR preview environments** — per-PR live URLs (e.g. `pr-12.your-app.preview.mksflow.com`); provision once per repo; auto status when GitHub Actions deploys; torn down when the PR closes
-- **Auto Kanban** — dispatch moves a task to **Doing**; a successful agent run moves it to **Test** for owner review
-- **Teams** — email invitations, roles, invite codes, shared Kanban, markdown comments, image/video attachments
-- **Notifications** — email for assignments, reviews, agent completion/failure, invites, and more
-- **Integrations in the IDE** — Linear, GitHub, and Notion stay two-way sync in Personal projects while Team mode talks to the cloud API
-
-You don’t need the cloud for solo offline work. Connect when a project becomes **Team** or when you want agents and previews on GitHub-linked repos.
-
----
-
-## Features (extension)
-
-### Personal mode
+### Personal mode (offline)
 
 - **Kanban board** — drag & drop across four columns
 - **Quick Capture** — `Cmd+Shift+T` / `Ctrl+Shift+T`
@@ -63,51 +22,75 @@ You don’t need the cloud for solo offline work. Connect when a project becomes
 - **Export** — project to JSON
 - **Offline-first** — SQLite; UI assets bundled locally (no CDN)
 
-### Send to AI
+### Send to AI (best-effort)
 
-Structured prompt from task context (title, description, acceptance criteria, related files):
+Builds structured context from the task and writes `mksflow-tasks/:id.md` in your workspace.
 
 | Host | Behavior |
 |------|----------|
-| **Cursor** | Opens Composer with `@` context file |
-| **Cline** | Attaches to Cline chat |
-| **Claude Code** | Attaches to Claude Code session |
-| **Antigravity** | Attaches to Antigravity chat |
-| **Clipboard** | Copies prompt only (fallback) |
+| **auto** (default) | Detect Cursor → Cline → Claude Code → Antigravity |
+| **cursor** / **cline** / **claude** / **antigravity** | Force a specific chat host |
+| **clipboard** | Copy prompt only |
 
-Set `mksflow.aiProvider` to `auto` (default) or force a host. See `docs/MULTI-IDE-AI.md`.
+Auto-attach works when the host extension is installed; otherwise the prompt is copied and you paste `@mksflow-tasks/:id.md` into chat. Set `mksflow.aiProvider` in Settings.
 
-Same task can also run **cloud agents** on the web — extension and cloud are two surfaces on one pipeline.
-
-### Team mode
-
-- API token from your [mksflow.com](https://mksflow.com/) profile → extension SecretStorage
-- Sync projects and tasks; role rules (e.g. only owners approve **Test → Done**)
-- `mksflow.apiBaseUrl` — default `https://mksflow.com/api/v1`
-
-### Integrations (Personal projects, in the IDE)
+### Integrations (Personal projects)
 
 | Integration | Sync |
 |-------------|------|
 | **Linear** | Two-way issues |
-| **GitHub** | Issues, Projects, PRs (cloud adds agent branches & preview deploys on linked repos) |
+| **GitHub** | Issues, PRs, Projects v2 board columns |
 | **Notion** | Database / board |
 
 Connect from the board header or command palette.
+
+### Team mode (cloud sync)
+
+Switch the board to **Team** (not a separate project type):
+
+- Sign in with **email/password** or paste an **API token** from your [mksflow.com](https://mksflow.com/) profile (`tasks:read` + `tasks:write`)
+- Shows **tasks assigned to you** on team projects; polls for updates
+- Move tasks, edit fields, upload media; **team owners** approve **Test → Done**
+- **Done** cloud tasks are read-only in the extension
+- **Open in cloud** for agent runs, diff review, PR workflow, and comments
+
+Configure `mksflow.apiBaseUrl` (default: `https://mksflow.com/api/v1`).
+
+---
+
+## On mksflow.com (not in the extension)
+
+These run in the browser on [mksflow.com](https://mksflow.com/):
+
+- **Cursor Cloud agents** — dispatch, diffs, accept/reject, pull requests
+- **PR preview environments** — live URL per pull request
+- **Team hub** — invites, roles, shared boards
+- **Comments, attachments, email notifications**
+
+The extension syncs team tasks and links out; it does not run cloud agents locally.
+
+---
+
+## Limitations
+
+- Cloud **agent dispatch**, **PR previews**, and **task comments** require opening the task on [mksflow.com](https://mksflow.com/)
+- **Send to AI** is best-effort; clipboard fallback is normal when attach commands are unavailable
+- **Integrations** (Linear/GitHub/Notion) are Personal-mode projects only
+- Switching editors may require rebuilding the SQLite native module (see below)
 
 ---
 
 ## Supported editors
 
-- **Cursor** · **VS Code** / **VSCodium** · **Cline** · **Claude Code** · **Antigravity** / **Windsurf**
+**Cursor** · **VS Code** / **VSCodium** · **Cline** · **Claude Code** · **Antigravity** / **Windsurf**
 
 ---
 
 ## Get started
 
-1. Install the extension (VSIX or F5 from source below).
-2. **Personal** — create a project and open the board; no account needed.
-3. **Team / agents** — [Create a free account](https://mksflow.com/) → API token in Profile → Team project in the extension; link GitHub and Cursor on the web for agent + preview workflows.
+1. Install the extension (VSIX or F5 from source).
+2. **Personal** — create a project, open the board; no account needed.
+3. **Team** — [Create an account](https://mksflow.com/) → sign in or paste API token → switch board to **Team**.
 
 ---
 
@@ -121,7 +104,9 @@ npm run build
 
 **F5** in VS Code/Cursor for Extension Development Host.
 
-Package: `vsce package` → install `.vsix` via **Extensions → Install from VSIX**.
+```bash
+npm run package:vsix   # → mksflow-1.0.1.vsix (includes better-sqlite3 native module)
+```
 
 **SQLite ABI mismatch** after switching editors:
 
@@ -137,9 +122,9 @@ Reload the window.
 ## Usage
 
 1. Open **MKSFlow** in the activity bar.
-2. Create a **project** (Personal, Team, or Linear/GitHub/Notion).
-3. Open the **board** (tree or status bar).
-4. Capture tasks, drag columns, start timers, **Send to AI** from the task menu.
+2. **Personal** — create a project (or link Linear/GitHub/Notion).
+3. Open the **board** from the tree or status bar.
+4. Quick Capture, drag columns, timers, **Send to AI** from the task menu.
 
 | Command | Shortcut |
 |---------|----------|
@@ -167,17 +152,17 @@ Full list: **Settings → MKSFlow**.
 ## Architecture
 
 ```
-Extension                         mksflow.com (cloud)
-├── Kanban + SQLite (Personal)    ├── Web Kanban + Team mode
-├── Send to AI (IDE agents)        ├── Cursor Cloud agents + PR previews
-├── Linear / GitHub / Notion      ├── Comments, attachments, email
-└── Team sync (API token) ───────►└── REST API (same services as web UI)
+Extension (IDE)                   mksflow.com
+├── Personal SQLite + Kanban        ├── Team boards + agents
+├── Send to AI                      ├── PR previews + comments
+├── Linear / GitHub / Notion        └── REST API
+└── Team sync (assigned tasks) ────►
 ```
-
-Internal docs: `docs/PROJECT.md`, `docs/HOW-TO-USE.md`.
 
 ---
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Issues: [github.com/MiranSalehi/mksflow-issues](https://github.com/MiranSalehi/mksflow-issues/issues)

@@ -63,6 +63,7 @@ export interface Task {
   agentWorkflowStatus?: string | null;
   currentIteration?: number | null;
   acceptedIteration?: number | null;
+  canApproveTestToDone?: boolean;
 }
 
 export interface TaskLog {
@@ -351,6 +352,7 @@ export type WebviewMessage =
   | { type: 'SEARCH_TASKS'; projectId: string; query: string; filters: TaskFilters }
   | { type: 'SET_BOARD_MODE'; mode: BoardMode }
   | { type: 'CLOUD_LOGIN'; email: string; password: string }
+  | { type: 'CLOUD_LOGIN_TOKEN'; token: string }
   | { type: 'CLOUD_LOGOUT' }
   | { type: 'CLOUD_SYNC_NOW' }
   | { type: 'OPEN_CLOUD_TASK'; projectId: string; taskId: string }

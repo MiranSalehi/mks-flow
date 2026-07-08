@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { CloudApiClient } from '../../infrastructure/cloud/CloudApiClient';
-import type { ApiUser, CloudCachePayload } from '../../infrastructure/cloud/CloudApiTypes';
+import type { ApiProject, ApiUser, CloudCachePayload } from '../../infrastructure/cloud/CloudApiTypes';
 import { CloudApiError } from '../../infrastructure/cloud/CloudApiError';
 import { mapApiProject, mapApiTask } from '../../infrastructure/cloud/cloudMappers';
 import type { CloudAuthService } from './CloudAuthService';
@@ -131,18 +131,29 @@ export class CloudSyncService {
       const user = await this.api.me();
       const apiProjects = await this.api.listTeamProjects();
       const projectIds = new Set(apiProjects.map((project) => project.id));
-      const apiTasks = (await this.api.listTasks()).filter((task) =>
-        projectIds.has(task.project_id),
-      );
+      const apiTasks = (
+        await this.api.listTasks({ assignedToMe: true })
+      ).filter((task) => projectIds.has(task.project_id));
 
       const projectTeamMap = new Map(
         apiProjects.map((project) => [project.id, project.team_id]),
       );
+      const projectOwnerMap = new Map(
+        apiProjects.map((project) => [project.id, project.owner_id]),
+      );
+
+      const ownerTeamIds = await this.resolveOwnerTeamIds(user, apiProjects);
 
       const projects: SerializedProject[] = apiProjects.map(mapApiProject);
-      const tasks: SerializedTask[] = apiTasks.map((task) =>
-        mapApiTask(task, projectTeamMap.get(task.project_id) ?? null),
-      );
+      const tasks: SerializedTask[] = apiTasks.map((task) => {
+        const teamId = projectTeamMap.get(task.project_id) ?? null;
+        const projectOwnerId = projectOwnerMap.get(task.project_id) ?? null;
+        const canApproveTestToDone = teamId
+          ? ownerTeamIds.has(teamId)
+          : projectOwnerId === user.id;
+
+        return mapApiTask(task, teamId, canApproveTestToDone);
+      });
 
       this.cache = {
         user,
@@ -262,5 +273,35 @@ export class CloudSyncService {
     for (const listener of this.statusListeners) {
       listener(state);
     }
+  }
+
+  private async resolveOwnerTeamIds(
+    user: ApiUser,
+    projects: ApiProject[],
+  ): Promise<Set<string>> {
+    const ownerTeamIds = new Set<string>();
+    const teamIds = [
+      ...new Set(
+        projects
+          .map((project) => project.team_id)
+          .filter((teamId): teamId is string => Boolean(teamId)),
+      ),
+    ];
+
+    await Promise.all(
+      teamIds.map(async (teamId) => {
+        try {
+          const members = await this.api.listTeamMembers(teamId);
+          const membership = members.find((member) => member.user.id === user.id);
+          if (membership?.role === 'owner') {
+            ownerTeamIds.add(teamId);
+          }
+        } catch {
+          // Skip teams we cannot read; approve stays hidden server-side.
+        }
+      }),
+    );
+
+    return ownerTeamIds;
   }
 }

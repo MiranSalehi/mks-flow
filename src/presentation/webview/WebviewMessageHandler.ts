@@ -14,6 +14,8 @@ import {
   serializedProjectToDomain,
   serializedTaskToDomain,
 } from '../../infrastructure/cloud/cloudMappers';
+import type { ApiUser } from '../../infrastructure/cloud/CloudApiTypes';
+import { CloudApiError } from '../../infrastructure/cloud/CloudApiError';
 import { RepositoryError } from '../../infrastructure/repositories/RepositoryError';
 import type { BoardMode } from '../../shared/cloudConfig';
 import { buildCloudTaskUrl, getWebAppUrl } from '../../shared/cloudUrls';
@@ -145,6 +147,9 @@ export class WebviewMessageHandler {
           return;
         case 'CLOUD_LOGIN':
           await this.cloudLogin(message.email, message.password);
+          return;
+        case 'CLOUD_LOGIN_TOKEN':
+          await this.cloudLoginWithToken(message.token);
           return;
         case 'CLOUD_LOGOUT':
           await this.cloudLogout();
@@ -405,6 +410,23 @@ export class WebviewMessageHandler {
     }
 
     const user = await this.cloud.auth.login(email, password);
+    await this.finishCloudLogin(user);
+  }
+
+  private async cloudLoginWithToken(token: string): Promise<void> {
+    if (!this.cloud) {
+      return;
+    }
+
+    const user = await this.cloud.auth.connectWithToken(token);
+    await this.finishCloudLogin(user);
+  }
+
+  private async finishCloudLogin(user: ApiUser): Promise<void> {
+    if (!this.cloud) {
+      return;
+    }
+
     this.cloud.sync.startPolling();
     await this.cloud.sync.syncNow();
     this.postCloudAuthState({
@@ -469,8 +491,7 @@ export class WebviewMessageHandler {
 
   private async updateTask(taskId: string, data: UpdateTaskDto): Promise<void> {
     if (this.isCloudTask(taskId)) {
-      await this.cloud!.tasks.update(taskId, data);
-      await this.broadcastCloudUpdates();
+      await this.runCloudMutation(() => this.cloud!.tasks.update(taskId, data));
       return;
     }
 
@@ -490,7 +511,7 @@ export class WebviewMessageHandler {
 
   private async startTask(taskId: string): Promise<void> {
     if (this.isCloudTask(taskId)) {
-      await this.cloud!.tasks.startTask(taskId);
+      await this.runCloudMutation(() => this.cloud!.tasks.startTask(taskId));
       return;
     }
 
@@ -501,7 +522,7 @@ export class WebviewMessageHandler {
 
   private async readyForTest(taskId: string): Promise<void> {
     if (this.isCloudTask(taskId)) {
-      await this.cloud!.tasks.readyForTest(taskId);
+      await this.runCloudMutation(() => this.cloud!.tasks.readyForTest(taskId));
       return;
     }
 
@@ -512,7 +533,7 @@ export class WebviewMessageHandler {
 
   private async approveTask(taskId: string): Promise<void> {
     if (this.isCloudTask(taskId)) {
-      await this.cloud!.tasks.approveTask(taskId);
+      await this.runCloudMutation(() => this.cloud!.tasks.approveTask(taskId));
       return;
     }
 
@@ -527,7 +548,9 @@ export class WebviewMessageHandler {
     insertAt?: number,
   ): Promise<void> {
     if (this.isCloudTask(taskId)) {
-      await this.cloud!.tasks.moveToStatus(taskId, toStatus, insertAt);
+      await this.runCloudMutation(() =>
+        this.cloud!.tasks.moveToStatus(taskId, toStatus, insertAt),
+      );
       return;
     }
 
@@ -542,7 +565,9 @@ export class WebviewMessageHandler {
     taskIds: string[],
   ): Promise<void> {
     if (this.isTeamMode()) {
-      await this.cloud!.tasks.reorderTasks(projectId, status, taskIds);
+      await this.runCloudMutation(() =>
+        this.cloud!.tasks.reorderTasks(projectId, status, taskIds),
+      );
       return;
     }
 
@@ -609,7 +634,7 @@ export class WebviewMessageHandler {
         chatPrompt: response.chatPrompt,
         markdown,
         providerName: response.providerName,
-        attachedToChat: response.attachedToChat,
+        attachedToChat: response.attachedToChat ?? false,
       });
       const hostLabel = response.providerName ?? 'AI chat';
       const attachHint = response.attachedToChat
@@ -1686,13 +1711,41 @@ export class WebviewMessageHandler {
     }
   }
 
+  private async runCloudMutation(fn: () => Promise<void>): Promise<void> {
+    try {
+      await fn();
+      await this.broadcastCloudUpdates();
+    } catch (error) {
+      try {
+        await this.cloud!.tasks.handleMutationError(error);
+      } catch (mutationError) {
+        this.postError(mutationError);
+      }
+    }
+  }
+
   private postError(error: unknown): void {
-    const message =
+    let message: string;
+
+    if (error instanceof CloudApiError) {
+      if (error.isUnauthorized()) {
+        message =
+          'Your cloud session expired. Sign in again from Team mode.';
+      } else if (error.isForbidden()) {
+        message =
+          error.message || 'You do not have permission for that action.';
+      } else {
+        message = error.message || 'Cloud request failed';
+      }
+    } else if (
       error instanceof TaskTransitionError ||
       error instanceof RepositoryError ||
       error instanceof Error
-        ? error.message
-        : 'Unexpected error';
+    ) {
+      message = error.message;
+    } else {
+      message = 'Unexpected error';
+    }
 
     this.postMessage({ type: 'ERROR', message });
     void vscode.window.showErrorMessage(message);

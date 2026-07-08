@@ -55,6 +55,7 @@ export function TaskDetail({
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const descriptionFieldRef = useRef<TaskDescriptionFieldHandle>(null);
+  const isLocked = isCloud && task.status === 'done';
 
   const clearSaveState = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -139,7 +140,11 @@ export function TaskDetail({
     });
   }, [description, onSave, priority, title]);
 
-  useDebouncedSave(`${title}\n${description}`, saveCoreFields, 500);
+  useDebouncedSave(
+    isLocked ? '' : `${title}\n${description}`,
+    saveCoreFields,
+    500,
+  );
 
   const saveAll = () => {
     const currentDescription =
@@ -168,7 +173,7 @@ export function TaskDetail({
       <header className="task-detail__header">
         <strong>Task Detail</strong>
         <div className="task-detail__header-actions">
-          <Button onClick={onSendToAi}>Send to AI</Button>
+          {!isLocked ? <Button onClick={onSendToAi}>Send to AI</Button> : null}
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
@@ -191,8 +196,12 @@ export function TaskDetail({
             id="task-title"
             className="input"
             value={title}
+            disabled={isLocked}
             onChange={(event) => setTitle(event.target.value)}
             onBlur={() => {
+              if (isLocked) {
+                return;
+              }
               const trimmed = title.trim();
               if (trimmed !== title) {
                 setTitle(trimmed);
@@ -208,8 +217,9 @@ export function TaskDetail({
             taskId={task.id}
             description={description}
             images={task.descriptionImages ?? []}
-            mediaUploadEnabled
-            mediaRemoveEnabled
+            mediaUploadEnabled={!isLocked}
+            mediaRemoveEnabled={!isLocked}
+            readOnly={isLocked}
             onDescriptionChange={setDescription}
           />
         </div>
@@ -222,7 +232,11 @@ export function TaskDetail({
             id="task-priority"
             className="input"
             value={priority}
+            disabled={isLocked}
             onChange={(event) => {
+              if (isLocked) {
+                return;
+              }
               const next = event.target.value as TaskPriority;
               setPriority(next);
               onSave({ priority: next });
@@ -244,8 +258,13 @@ export function TaskDetail({
             id="task-tags"
             className="input"
             value={tagsText}
+            disabled={isLocked}
             onChange={(event) => setTagsText(event.target.value)}
-            onBlur={() => onSave({ tags: splitCsv(tagsText) })}
+            onBlur={() => {
+              if (!isLocked) {
+                onSave({ tags: splitCsv(tagsText) });
+              }
+            }}
             placeholder="comma,separated,tags"
           />
         </div>
@@ -258,13 +277,20 @@ export function TaskDetail({
             id="task-files"
             className="textarea"
             value={relatedFilesText}
+            disabled={isLocked}
             onChange={(event) => setRelatedFilesText(event.target.value)}
-            onBlur={() => onSave({ relatedFiles: splitLines(relatedFilesText) })}
+            onBlur={() => {
+              if (!isLocked) {
+                onSave({ relatedFiles: splitLines(relatedFilesText) });
+              }
+            }}
             placeholder="One path per line. Folders end with /"
           />
-          <Button variant="secondary" onClick={onPickFiles}>
-            Pick files or folders from workspace
-          </Button>
+          {!isLocked ? (
+            <Button variant="secondary" onClick={onPickFiles}>
+              Pick files or folders from workspace
+            </Button>
+          ) : null}
         </div>
 
         <div className="task-detail__section field-group">
@@ -275,10 +301,13 @@ export function TaskDetail({
             id="task-criteria"
             className="textarea"
             value={criteriaText}
+            disabled={isLocked}
             onChange={(event) => setCriteriaText(event.target.value)}
-            onBlur={() =>
-              onSave({ acceptanceCriteria: splitLines(criteriaText) })
-            }
+            onBlur={() => {
+              if (!isLocked) {
+                onSave({ acceptanceCriteria: splitLines(criteriaText) });
+              }
+            }}
           />
         </div>
 
@@ -357,9 +386,11 @@ export function TaskDetail({
       </div>
 
       <footer className="task-detail__footer">
-        <Button onClick={saveAll} loading={isSaving}>
-          {isSaving ? 'Saving…' : 'Save changes'}
-        </Button>
+        {!isLocked ? (
+          <Button onClick={saveAll} loading={isSaving}>
+            {isSaving ? 'Saving…' : 'Save changes'}
+          </Button>
+        ) : null}
         {!isCloud ? (
           <Button variant="secondary" onClick={onDelete} disabled={isSaving}>
             Delete

@@ -4,6 +4,7 @@ import type {
   ApiProject,
   ApiTask,
   ApiTaskLog,
+  ApiTeamMember,
   ApiUser,
 } from './CloudApiTypes';
 import { CloudApiError } from './CloudApiError';
@@ -85,6 +86,11 @@ export class CloudApiClient {
   /** @deprecated Prefer {@link listTasks} — only returns tasks assigned to the user. */
   async listMyTasks(): Promise<ApiTask[]> {
     return this.listTasks({ assignedToMe: true });
+  }
+
+  /** Lists members of a team (includes role per member). */
+  async listTeamMembers(teamId: string): Promise<ApiTeamMember[]> {
+    return this.request<ApiTeamMember[]>('GET', `/teams/${teamId}/members`);
   }
 
   /** Updates a task. */

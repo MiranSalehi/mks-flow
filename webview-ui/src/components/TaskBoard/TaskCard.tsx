@@ -105,12 +105,16 @@ export function TaskCard({
     zIndex: isDragging ? 0 : undefined,
   };
 
-  const primaryAction = getPrimaryAction(task.status, {
+  const primaryAction = getPrimaryAction(task, {
     onOpen,
     onStart,
     onReadyForTest,
     onApprove,
   });
+  const approveLocked =
+    task.source === 'cloud' &&
+    task.status === 'test' &&
+    !task.canApproveTestToDone;
 
   return (
     <article
@@ -291,6 +295,9 @@ export function TaskCard({
         <button
           type="button"
           className="task-card__primary"
+          title={
+            approveLocked ? 'Only team owners can approve.' : undefined
+          }
           onClick={(event) => {
             event.stopPropagation();
             primaryAction.onClick();
@@ -309,7 +316,7 @@ export function TaskCard({
 }
 
 function getPrimaryAction(
-  status: Task['status'],
+  task: Task,
   handlers: {
     onOpen: () => void;
     onStart: () => void;
@@ -317,12 +324,15 @@ function getPrimaryAction(
     onApprove: () => void;
   },
 ): { label: string; onClick: () => void } {
-  switch (status) {
+  switch (task.status) {
     case 'todo':
       return { label: 'Start', onClick: handlers.onStart };
     case 'doing':
       return { label: 'Ready for test', onClick: handlers.onReadyForTest };
     case 'test':
+      if (task.source === 'cloud' && !task.canApproveTestToDone) {
+        return { label: 'View', onClick: handlers.onOpen };
+      }
       return { label: 'Approve', onClick: handlers.onApprove };
     default:
       return { label: 'View', onClick: handlers.onOpen };

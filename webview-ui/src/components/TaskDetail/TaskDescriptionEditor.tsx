@@ -18,6 +18,7 @@ interface TaskDescriptionEditorProps {
   taskId: string;
   value: string;
   placeholder?: string;
+  readOnly?: boolean;
   onChange: (value: string) => void;
   onMediaPaste?: (event: ClipboardEvent) => boolean | void;
 }
@@ -43,7 +44,7 @@ export const TaskDescriptionEditor = forwardRef<
   TaskDescriptionEditorHandle,
   TaskDescriptionEditorProps
 >(function TaskDescriptionEditor(
-  { taskId, value, placeholder, onChange, onMediaPaste },
+  { taskId, value, placeholder, readOnly = false, onChange, onMediaPaste },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,6 +101,7 @@ export const TaskDescriptionEditor = forwardRef<
     editor.codemirror.setOption('lineWrapping', true);
     editor.codemirror.setOption('lineNumbers', false);
     editor.codemirror.setOption('gutters', []);
+    editor.codemirror.setOption('readOnly', readOnly);
 
     editorRef.current = editor;
 
@@ -112,7 +114,7 @@ export const TaskDescriptionEditor = forwardRef<
       editor.toTextArea();
       editorRef.current = null;
     };
-  }, [placeholder, taskId]);
+  }, [placeholder, readOnly, taskId]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -130,7 +132,10 @@ export const TaskDescriptionEditor = forwardRef<
   }, [taskId]);
 
   return (
-    <div ref={containerRef} className="task-description-editor">
+    <div
+      ref={containerRef}
+      className={`task-description-editor${readOnly ? ' task-description-editor--readonly' : ''}`}
+    >
       <textarea ref={textareaRef} defaultValue={value} />
     </div>
   );

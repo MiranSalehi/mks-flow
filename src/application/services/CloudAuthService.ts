@@ -34,9 +34,34 @@ export class CloudAuthService {
   /** Logs in with email/password and persists the token. */
   async login(email: string, password: string): Promise<ApiUser> {
     const response = await this.api.login(email.trim(), password);
-    await this.context.secrets.store(CLOUD_SECRETS_KEY, response.token);
-    this.api.setToken(response.token);
+    await this.persistToken(response.token);
     return response.user;
+  }
+
+  /** Validates and stores a Sanctum API token from the cloud profile. */
+  async connectWithToken(token: string): Promise<ApiUser> {
+    const trimmed = token.trim();
+    if (!trimmed) {
+      throw new Error('API token is required');
+    }
+
+    this.api.setToken(trimmed);
+    try {
+      const user = await this.api.me();
+      await this.persistToken(trimmed);
+      return user;
+    } catch (error) {
+      this.api.setToken(null);
+      if (error instanceof CloudApiError && error.isUnauthorized()) {
+        throw new Error('Invalid or expired API token');
+      }
+      throw error;
+    }
+  }
+
+  private async persistToken(token: string): Promise<void> {
+    await this.context.secrets.store(CLOUD_SECRETS_KEY, token);
+    this.api.setToken(token);
   }
 
   /** Clears the token locally and revokes it on the server when possible. */

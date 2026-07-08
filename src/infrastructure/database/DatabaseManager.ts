@@ -1,6 +1,20 @@
-import Database from 'better-sqlite3';
+import type { Database as SqliteDatabase } from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
+
+type BetterSqlite3Constructor = new (filename: string) => SqliteDatabase;
+
+function loadBetterSqlite3(): BetterSqlite3Constructor {
+  try {
+    // Lazy load so activation can show a clear error when the VSIX omits native deps.
+    return require('better-sqlite3') as BetterSqlite3Constructor;
+  } catch (error) {
+    throw new DatabaseError(
+      'MKSFlow SQLite native module is missing from the installed extension',
+      error,
+    );
+  }
+}
 
 const DB_DIR_NAME = 'mksflow';
 const DB_FILE_NAME = 'mksflow.db';
@@ -23,6 +37,13 @@ export class DatabaseError extends Error {
     const cause = formatUnknownError(this.cause);
     if (!cause) {
       return this.message;
+    }
+
+    if (cause.includes('Cannot find module')) {
+      return (
+        `${this.message}. Reinstall the extension from the marketplace, or install from a VSIX ` +
+        'that includes better-sqlite3. If you built locally, run "npm run rebuild:electron" and repackage.'
+      );
     }
 
     if (cause.includes('NODE_MODULE_VERSION')) {
@@ -58,10 +79,10 @@ function formatUnknownError(error: unknown): string {
 export class DatabaseManager {
   private static instance: DatabaseManager | null = null;
 
-  public readonly db: Database.Database;
+  public readonly db: SqliteDatabase;
   private readonly dbPath: string;
 
-  private constructor(db: Database.Database, dbPath: string) {
+  private constructor(db: SqliteDatabase, dbPath: string) {
     this.db = db;
     this.dbPath = dbPath;
   }
@@ -84,7 +105,8 @@ export class DatabaseManager {
       const dbPath = DatabaseManager.resolveDbPath(storagePath);
       DatabaseManager.ensureDirectory(path.dirname(dbPath));
 
-      const db = new Database(dbPath);
+      const BetterSqlite3 = loadBetterSqlite3();
+      const db = new BetterSqlite3(dbPath);
       db.pragma('journal_mode = WAL');
       db.pragma('foreign_keys = ON');
 
@@ -142,7 +164,7 @@ export class DatabaseManager {
   }
 
   private static runMigrations(
-    db: Database.Database,
+    db: SqliteDatabase,
     migrationsDir: string,
   ): void {
     if (!fs.existsSync(migrationsDir)) {

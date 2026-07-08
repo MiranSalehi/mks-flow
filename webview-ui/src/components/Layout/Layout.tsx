@@ -373,6 +373,9 @@ export function Layout() {
               onLogin={(email, password) =>
                 postMessage({ type: 'CLOUD_LOGIN', email, password })
               }
+              onLoginWithToken={(token) =>
+                postMessage({ type: 'CLOUD_LOGIN_TOKEN', token })
+              }
             />
           ) : !selectedProjectId ? (
             <div className="empty-state">
