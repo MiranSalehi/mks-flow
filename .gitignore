@@ -1,5 +1,6 @@
 node_modules/
 dist/
+docs/
 .env.preview
 webview-ui/node_modules/
 webview-ui/dist/
